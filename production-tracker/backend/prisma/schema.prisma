@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  WORKER
+}
+
+enum SubRole {
+  SALES
+  CAD
+  CAM
+  STORE
+  CNC
+  ASSEMBLY
+  QUALITY
+  DELIVERY
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum StageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum NotificationType {
+  STAGE_ASSIGNED
+  STAGE_STATUS_CHANGED
+  LOW_STOCK
+  CHAT_MESSAGE
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum ChatThreadType {
+  DIRECT
+  WORK_ORDER
+}
+
+model User {
+  id            Int              @id @default(autoincrement())
+  username      String           @unique
+  password      String
+  role          Role             @default(WORKER)
+  subRoles      UserSubRole[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  workOrders    WorkOrder[]      @relation("CreatedBy")
+  assignedStages WorkOrderStage[] @relation("AssignedTo")
+  stockItems    StockItem[]      @relation("StockCreatedBy") 
+  stockReservations StockReservation[] @relation("ReservedBy")
+  receivedNotifications Notification[] @relation("NotificationRecipient")
+  actorNotifications Notification[] @relation("NotificationActor")
+  notificationReads NotificationRead[]
+  chatThreadsCreated ChatThread[] @relation("ChatThreadCreatedBy")
+  chatParticipants ChatParticipant[]
+  messagesSent ChatMessage[] @relation("ChatMessageSender")
+  messagesRead MessageRead[]
+}
+
+model UserSubRole {
+  id      Int     @id @default(autoincrement())
+  subRole SubRole
+  userId  Int
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subRole])
+}
+
+model WorkOrder {
+  id              Int              @id @default(autoincrement())
+  workOrderNumber String           @unique
+  date            DateTime
+  client          String
+  project         String
+  item            String
+  reference       String
+  colorAndWay     String
+  type            String
+  quantity        Int
+  designNumber    String
+  deliveryWeek    String
+  status          WorkOrderStatus  @default(PENDING)
+  notes           String?
+  createdById     Int
+  createdBy       User             @relation("CreatedBy", fields: [createdById], references: [id])
+  stages          WorkOrderStage[]
+  stockReservations StockReservation[]
+  notifications   Notification[]
+  chatThreads     ChatThread[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model WorkOrderStage {
+  id            Int          @id @default(autoincrement())
+  workOrderId   Int
+  workOrder     WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  subRole       SubRole
+  status        StageStatus  @default(PENDING)
+  assignedToId  Int?
+  assignedTo    User?        @relation("AssignedTo", fields: [assignedToId], references: [id])
+  notes         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  notifications Notification[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([workOrderId, subRole])
+}
+enum StockCategory {
+  RAW_MATERIAL
+  COMPONENT
+  FINISHED_PRODUCT
+  TOOL
+  CONSUMABLE
+}
+
+model StockItem {
+  id              Int           @id @default(autoincrement())
+  name            String
+  description     String?
+  category        StockCategory
+  quantity        Int           @default(0)
+  unit            String        // e.g., "pieces", "meters", "kg"
+  minQuantity     Int           @default(10)  // Alert threshold
+  location        String?       // Storage location
+  supplier        String?
+  price           Float?        // Unit price
+  notes           String?
+  createdById     Int
+  createdBy       User          @relation("StockCreatedBy", fields: [createdById], references: [id])
+  reservations    StockReservation[]
+  notifications   Notification[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model StockReservation {
+  id            Int        @id @default(autoincrement())
+  stockItemId   Int
+  stockItem     StockItem  @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  workOrderId   Int
+  workOrder     WorkOrder  @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  reservedById  Int
+  reservedBy    User       @relation("ReservedBy", fields: [reservedById], references: [id])
+  quantity      Int
+  notes         String?
+  status        ReservationStatus @default(RESERVED)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+enum ReservationStatus {
+  RESERVED
+  CONSUMED
+  CANCELLED
+}
+
+model Notification {
+  id              Int                  @id @default(autoincrement())
+  type            NotificationType
+  severity        NotificationSeverity @default(INFO)
+  title           String
+  message         String
+  recipientUserId Int
+  recipientUser   User                 @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  actorUserId     Int?
+  actorUser       User?                @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  workOrderId     Int?
+  workOrder       WorkOrder?           @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  stageId         Int?
+  stage           WorkOrderStage?      @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  stockItemId     Int?
+  stockItem       StockItem?           @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
+  metadata        Json?
+  reads           NotificationRead[]
+  createdAt       DateTime             @default(now())
+
+  @@index([recipientUserId, createdAt])
+  @@index([type])
+}
+
+model NotificationRead {
+  id             Int          @id @default(autoincrement())
+  notificationId Int
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
+}
+
+model ChatThread {
+  id              Int                @id @default(autoincrement())
+  type            ChatThreadType     @default(DIRECT)
+  workOrderId     Int?
+  workOrder       WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  name            String?
+  createdById     Int
+  createdBy       User               @relation("ChatThreadCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  participants    ChatParticipant[]
+  messages        ChatMessage[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([type])
+  @@index([workOrderId])
+  @@index([createdById])
+}
+
+model ChatParticipant {
+  id              Int                @id @default(autoincrement())
+  threadId        Int
+  thread          ChatThread         @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt        DateTime           @default(now())
+  lastReadAt      DateTime?
+
+  @@unique([threadId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id              Int                @id @default(autoincrement())
+  threadId        Int
+  thread          ChatThread         @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId        Int
+  sender          User               @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  content         String
+  attachments     ChatAttachment[]
+  reads           MessageRead[]
+  editedAt        DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime           @default(now())
+
+  @@index([threadId, createdAt])
+  @@index([senderId])
+}
+
+model ChatAttachment {
+  id              Int                @id @default(autoincrement())
+  messageId       Int
+  message         ChatMessage        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  filename        String
+  mimeType        String
+  size            Int
+  url             String
+  uploadedAt      DateTime           @default(now())
+}
+
+model MessageRead {
+  id              Int                @id @default(autoincrement())
+  messageId       Int
+  message         ChatMessage        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt          DateTime           @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
+}
+
+
+
+
