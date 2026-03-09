@@ -8,19 +8,28 @@ import NotificationBell from '@/components/NotificationBell';
 import api from '@/lib/axios';
 import { notifyError } from '@/lib/toast';
 import {
+  ClipboardList,
+  BadgeCheck,
+  AlertTriangle,
+  CalendarClock,
+  PieChart as PieChartIcon,
+  Users,
+  Boxes,
+  Building2,
+} from 'lucide-react';
+import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Tooltip,
   Legend,
+  PieChart,
+  Pie,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
-  LineChart,
-  Line,
+  ReferenceLine,
 } from 'recharts';
 
 const STATUS_COLORS = {
@@ -30,42 +39,53 @@ const STATUS_COLORS = {
   CANCELLED: '#DC2626',
 };
 
-const CATEGORY_COLORS = {
-  RAW_MATERIAL: '#7C3AED',
-  COMPONENT: '#2563EB',
-  FINISHED_PRODUCT: '#16A34A',
-  TOOL: '#4B5563',
-  CONSUMABLE: '#EA580C',
-};
+function CustomChartTooltip({ active, payload, label, labelPrefix, valueFormatter }) {
+  if (!active || !payload || payload.length === 0) return null;
 
-const STAGE_ORDER = ['SALES', 'CAD', 'CAM', 'STORE', 'CNC', 'ASSEMBLY', 'QUALITY', 'DELIVERY'];
+  const items = payload.filter((item) => Number(item.value) !== 0);
+  if (items.length === 0) return null;
 
-function getWeekStartDate(dateInput) {
-  const date = new Date(dateInput);
-  const day = date.getDay();
-  const diff = (day + 6) % 7;
-  date.setDate(date.getDate() - diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function formatWeekLabel(date) {
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${month}/${day}`;
-}
-
-function ChartCard({ title, subtitle, children }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 modern-hover">
+    <div className="bg-slate-900/95 border border-slate-700 rounded-lg shadow-xl px-3 py-2 min-w-44 backdrop-blur-sm">
+      <p className="text-xs font-semibold text-gray-900 mb-2">
+        <span className="text-slate-200">{labelPrefix ? `${labelPrefix}: ${label}` : label}</span>
+      </p>
+      <div className="space-y-1">
+        {items.map((item) => (
+          <div key={item.dataKey} className="flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-slate-300">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+              <span>{item.name || item.dataKey}</span>
+            </div>
+            <span className="font-semibold text-white">
+              {valueFormatter ? valueFormatter(item.value) : item.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({ title, subtitle, icon: Icon, children }) {
+  return (
+    <div className="bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-sm border border-gray-100 p-5 modern-hover">
       <div className="mb-4">
-        <h3 className="font-bold text-gray-900">{title}</h3>
+        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+          {Icon && <Icon className="w-4 h-4 text-gray-600" />}
+          <span>{title}</span>
+        </h3>
         {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
       </div>
       <div className="h-72">{children}</div>
     </div>
   );
 }
+
+const shortenLabel = (value) => {
+  if (!value) return value;
+  return value.length > 16 ? `${value.slice(0, 16)}...` : value;
+};
 
 export default function AdminReportsPage() {
   const router = useRouter();
@@ -158,113 +178,72 @@ export default function AdminReportsPage() {
   };
 
   const chartData = useMemo(() => {
-    const { workOrders, stockItems, reservations } = reportData;
+    const { workOrders, stockItems } = reportData;
 
     const workOrderStatusData = [
-      { name: 'Pending', value: workOrders.filter((w) => w.status === 'PENDING').length, color: STATUS_COLORS.PENDING },
-      { name: 'In Progress', value: workOrders.filter((w) => w.status === 'IN_PROGRESS').length, color: STATUS_COLORS.IN_PROGRESS },
-      { name: 'Completed', value: workOrders.filter((w) => w.status === 'COMPLETED').length, color: STATUS_COLORS.COMPLETED },
-      { name: 'Cancelled', value: workOrders.filter((w) => w.status === 'CANCELLED').length, color: STATUS_COLORS.CANCELLED },
+      {
+        name: 'Pending',
+        value: workOrders.filter((workOrder) => (workOrder.status || 'PENDING') === 'PENDING').length,
+        color: STATUS_COLORS.PENDING,
+      },
+      {
+        name: 'In Progress',
+        value: workOrders.filter((workOrder) => workOrder.status === 'IN_PROGRESS').length,
+        color: STATUS_COLORS.IN_PROGRESS,
+      },
+      {
+        name: 'Completed',
+        value: workOrders.filter((workOrder) => workOrder.status === 'COMPLETED').length,
+        color: STATUS_COLORS.COMPLETED,
+      },
+      {
+        name: 'Cancelled',
+        value: workOrders.filter((workOrder) => workOrder.status === 'CANCELLED').length,
+        color: STATUS_COLORS.CANCELLED,
+      },
     ].filter((item) => item.value > 0);
 
-    const weeklyThroughputData = (() => {
-      const weeks = [];
-      const currentWeekStart = getWeekStartDate(new Date());
-
-      for (let index = 7; index >= 0; index -= 1) {
-        const date = new Date(currentWeekStart);
-        date.setDate(date.getDate() - index * 7);
-        weeks.push({
-          key: date.toISOString().slice(0, 10),
-          label: formatWeekLabel(date),
-          created: 0,
-          completed: 0,
-        });
-      }
-
-      const weekByKey = new Map(weeks.map((week) => [week.key, week]));
-
-      workOrders.forEach((workOrder) => {
-        const createdKey = getWeekStartDate(workOrder.createdAt).toISOString().slice(0, 10);
-        if (weekByKey.has(createdKey)) {
-          weekByKey.get(createdKey).created += 1;
-        }
-
-        if (workOrder.status === 'COMPLETED') {
-          const completedKey = getWeekStartDate(workOrder.updatedAt || workOrder.createdAt).toISOString().slice(0, 10);
-          if (weekByKey.has(completedKey)) {
-            weekByKey.get(completedKey).completed += 1;
-          }
-        }
-      });
-
-      return weeks;
-    })();
-
-    const stageBottleneckData = STAGE_ORDER.map((subRole) => {
-      let pending = 0;
-      let inProgress = 0;
-
-      workOrders.forEach((workOrder) => {
-        (workOrder.stages || []).forEach((stage) => {
-          if (stage.subRole !== subRole) return;
-          if (stage.status === 'PENDING') pending += 1;
-          if (stage.status === 'IN_PROGRESS') inProgress += 1;
-        });
-      });
-
-      return {
-        stage: subRole,
-        pending,
-        inProgress,
-        active: pending + inProgress,
-      };
-    });
-
-    const workerLoadMap = new Map();
+    const stageWorkerMap = new Map();
     workOrders.forEach((workOrder) => {
       (workOrder.stages || []).forEach((stage) => {
-        if (!stage.assignedTo?.username) return;
         if (stage.status !== 'PENDING' && stage.status !== 'IN_PROGRESS') return;
 
-        const key = stage.assignedTo.username;
-        workerLoadMap.set(key, (workerLoadMap.get(key) || 0) + 1);
+        const worker = stage.assignedTo?.username || 'Unassigned';
+        const subRole = stage.subRole || 'General';
+        const key = `${worker}__${subRole}`;
+
+        if (!stageWorkerMap.has(key)) {
+          stageWorkerMap.set(key, {
+            worker,
+            subRole,
+            workerSubRole: `${worker} (${subRole})`,
+            pending: 0,
+            inProgress: 0,
+            active: 0,
+          });
+        }
+
+        const item = stageWorkerMap.get(key);
+        if (stage.status === 'PENDING') item.pending += 1;
+        if (stage.status === 'IN_PROGRESS') item.inProgress += 1;
+        item.active += 1;
       });
     });
 
-    const workerLoadData = [...workerLoadMap.entries()]
-      .map(([worker, activeTasks]) => ({ worker, activeTasks }))
-      .sort((a, b) => b.activeTasks - a.activeTasks)
-      .slice(0, 10);
+    const stageBottleneckData = [...stageWorkerMap.values()]
+      .sort((a, b) => b.active - a.active)
+      .slice(0, 12);
 
-    const categoryHealthMap = new Map();
-    const categoryValueMap = new Map();
-
-    stockItems.forEach((item) => {
-      const category = item.category || 'OTHER';
-      const currentHealth = categoryHealthMap.get(category) || { category, low: 0, healthy: 0 };
-
-      if (item.isLowStock) currentHealth.low += 1;
-      else currentHealth.healthy += 1;
-      categoryHealthMap.set(category, currentHealth);
-
-      const currentValue = categoryValueMap.get(category) || 0;
-      const itemValue = (Number(item.quantity) || 0) * (Number(item.price) || 0);
-      categoryValueMap.set(category, currentValue + itemValue);
-    });
-
-    const stockHealthByCategoryData = [...categoryHealthMap.values()]
-      .sort((a, b) => (b.low + b.healthy) - (a.low + a.healthy));
-
-    const inventoryValueByCategoryData = [...categoryValueMap.entries()]
-      .map(([category, value]) => ({ category, value: Number(value.toFixed(2)) }))
-      .sort((a, b) => b.value - a.value);
-
-    const reservationStatusData = [
-      { name: 'Reserved', value: reservations.filter((reservation) => reservation.status === 'RESERVED').length, color: '#2563EB' },
-      { name: 'Consumed', value: reservations.filter((reservation) => reservation.status === 'CONSUMED').length, color: '#16A34A' },
-      { name: 'Cancelled', value: reservations.filter((reservation) => reservation.status === 'CANCELLED').length, color: '#DC2626' },
-    ].filter((item) => item.value > 0);
+    const stockHealthByItemData = stockItems
+      .map((item) => {
+        const quantity = Number(item.quantity) || 0;
+        const threshold = Number(item.minQuantity) || 0;
+        return {
+          item: item.name || `Item-${item.id}`,
+          healthDelta: quantity - threshold,
+        };
+      })
+      .sort((a, b) => a.healthDelta - b.healthDelta || a.item.localeCompare(b.item));
 
     const topClientsData = (() => {
       const map = new Map();
@@ -281,12 +260,8 @@ export default function AdminReportsPage() {
 
     return {
       workOrderStatusData,
-      weeklyThroughputData,
       stageBottleneckData,
-      workerLoadData,
-      stockHealthByCategoryData,
-      inventoryValueByCategoryData,
-      reservationStatusData,
+      stockHealthByItemData,
       topClientsData,
     };
   }, [reportData]);
@@ -319,12 +294,18 @@ export default function AdminReportsPage() {
         <main className="p-4 sm:p-8 space-y-6 modern-enter">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 modern-hover">
-              <p className="text-xs text-gray-500 uppercase font-medium">Work Orders</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500 uppercase font-medium">Work Orders</p>
+                <ClipboardList className="w-4 h-4 text-gray-500" />
+              </div>
               <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalWorkOrders}</p>
               <p className="text-xs text-gray-500 mt-2">{stats.inProgressWorkOrders} in progress</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 modern-hover">
-              <p className="text-xs text-gray-500 uppercase font-medium">Completion Rate</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500 uppercase font-medium">Completion Rate</p>
+                <BadgeCheck className="w-4 h-4 text-green-600" />
+              </div>
               <p className="text-3xl font-bold text-green-600 mt-2">
                 {stats.totalWorkOrders > 0
                   ? Math.round((stats.completedWorkOrders / stats.totalWorkOrders) * 100)
@@ -334,12 +315,18 @@ export default function AdminReportsPage() {
               <p className="text-xs text-gray-500 mt-2">{stats.completedWorkOrders} completed</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 modern-hover">
-              <p className="text-xs text-gray-500 uppercase font-medium">Low Stock Items</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500 uppercase font-medium">Low Stock Items</p>
+                <AlertTriangle className="w-4 h-4 text-orange-600" />
+              </div>
               <p className="text-3xl font-bold text-orange-600 mt-2">{stats.lowStockItems}</p>
               <p className="text-xs text-gray-500 mt-2">of {stats.totalStockItems} total items</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 modern-hover">
-              <p className="text-xs text-gray-500 uppercase font-medium">Active Reservations</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500 uppercase font-medium">Active Reservations</p>
+                <CalendarClock className="w-4 h-4 text-blue-600" />
+              </div>
               <p className="text-3xl font-bold text-blue-600 mt-2">{stats.activeReservations}</p>
               <p className="text-xs text-gray-500 mt-2">of {stats.totalReservations} total reservations</p>
             </div>
@@ -362,128 +349,87 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <ChartCard title="Work Order Status" subtitle="Current status distribution">
+            <ChartCard title="Work Order Status" subtitle="Current status distribution" icon={PieChartIcon}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
+                  <defs>
+                    <filter id="pieShadow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.22" />
+                    </filter>
+                  </defs>
                   <Pie
                     data={chartData.workOrderStatusData}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
+                    innerRadius={55}
                     outerRadius={95}
+                    paddingAngle={3}
                     label
+                    style={{ filter: 'url(#pieShadow)' }}
                   >
                     {chartData.workOrderStatusData.map((entry) => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomChartTooltip labelPrefix="Status" />} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Weekly Throughput" subtitle="Created vs completed (last 8 weeks)">
+            <ChartCard title="Stage Bottlenecks" subtitle="Pending and in-progress by worker and sub-role" icon={Users}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.weeklyThroughputData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
+                <BarChart data={chartData.stageBottleneckData} layout="vertical" margin={{ left: 20, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" allowDecimals={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <YAxis dataKey="workerSubRole" type="category" width={170} tick={{ fill: '#475569', fontSize: 11 }} tickFormatter={shortenLabel} />
+                  <Tooltip content={<CustomChartTooltip labelPrefix="Worker" />} />
                   <Legend />
-                  <Line type="monotone" dataKey="created" stroke="#2563EB" strokeWidth={2} name="Created" />
-                  <Line type="monotone" dataKey="completed" stroke="#16A34A" strokeWidth={2} name="Completed" />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title="Stage Bottlenecks" subtitle="Pending and in-progress by department">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.stageBottleneckData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="stage" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="pending" fill="#6B7280" name="Pending" />
-                  <Bar dataKey="inProgress" fill="#2563EB" name="In Progress" />
+                  <Bar dataKey="pending" fill="#64748b" name="Pending" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="inProgress" fill="#2563EB" name="In Progress" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Worker Load" subtitle="Active assigned stages (top 10)">
+            <ChartCard title="Stock Health" subtitle="Stock minus threshold by item (unit baseline = 0)" icon={Boxes}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.workerLoadData} layout="vertical" margin={{ left: 20, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" allowDecimals={false} />
-                  <YAxis dataKey="worker" type="category" width={110} />
-                  <Tooltip />
-                  <Bar dataKey="activeTasks" fill="#4F46E5" name="Active Tasks" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title="Stock Health by Category" subtitle="Low stock vs healthy inventory">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.stockHealthByCategoryData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
+                <BarChart data={chartData.stockHealthByItemData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="item" interval={0} angle={-20} textAnchor="end" height={70} tick={{ fill: '#475569', fontSize: 11 }} tickFormatter={shortenLabel} />
+                  <YAxis
+                    allowDecimals={false}
+                    domain={[(dataMin) => Math.min(dataMin, -5), (dataMax) => Math.max(dataMax, 5)]}
+                    tickFormatter={(value) => `${value}`}
+                    tick={{ fill: '#64748b', fontSize: 12 }}
+                  />
+                  <ReferenceLine y={0} stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" label="0" />
+                  <Tooltip content={<CustomChartTooltip labelPrefix="Item" valueFormatter={(value) => `${value} units`} />} />
                   <Legend />
-                  <Bar dataKey="healthy" stackId="stock" fill="#16A34A" name="Healthy" />
-                  <Bar dataKey="low" stackId="stock" fill="#EA580C" name="Low Stock" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title="Inventory Value by Category" subtitle="Quantity × unit price">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.inventoryValueByCategoryData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${Number(value).toFixed(2)}`} />
-                  <Bar dataKey="value" name="Value">
-                    {chartData.inventoryValueByCategoryData.map((entry) => (
-                      <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category] || '#4B5563'} />
+                  <Bar dataKey="healthDelta" name="Stock vs Threshold" minPointSize={4} radius={[6, 6, 0, 0]}>
+                    {chartData.stockHealthByItemData.map((entry) => (
+                      <Cell key={entry.item} fill={entry.healthDelta < 0 ? '#EA580C' : '#2563EB'} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Reservation Status" subtitle="Lifecycle distribution">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData.reservationStatusData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={95}
-                    label
-                  >
-                    {chartData.reservationStatusData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title="Top Clients" subtitle="Work orders count by client">
+            <ChartCard title="Top Clients" subtitle="Work orders count by client" icon={Building2}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData.topClientsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="client" interval={0} angle={-20} textAnchor="end" height={70} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="orders" fill="#2563EB" name="Orders" />
+                  <defs>
+                    <linearGradient id="clientBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0ea5e9" />
+                      <stop offset="100%" stopColor="#2563eb" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="client" interval={0} angle={-20} textAnchor="end" height={70} tick={{ fill: '#475569', fontSize: 11 }} tickFormatter={shortenLabel} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <Tooltip content={<CustomChartTooltip labelPrefix="Client" />} />
+                  <Bar dataKey="orders" fill="url(#clientBarGradient)" name="Orders" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>

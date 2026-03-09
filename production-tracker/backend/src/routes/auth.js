@@ -19,6 +19,8 @@ const VALID_SUB_ROLES = [
   'DELIVERY',
 ];
 
+const PASSWORD_MIN_LENGTH = 6;
+
 /**
  * POST /api/auth/login
  */
@@ -92,6 +94,12 @@ router.post('/register', authenticateToken, isAdmin, async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         error: 'Username and password are required',
+      });
+    }
+
+    if (password.trim().length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({
+        error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
       });
     }
 
@@ -233,6 +241,12 @@ router.put('/users/:id', authenticateToken, isAdmin, async (req, res) => {
       });
     }
 
+    if (role && userId === req.user.id && role !== 'ADMIN') {
+      return res.status(403).json({
+        error: 'You cannot change your own admin role',
+      });
+    }
+
     // If updating to WORKER, must have sub-roles
     if (role === 'WORKER') {
       if (!subRoles || !Array.isArray(subRoles) || subRoles.length === 0) {
@@ -268,6 +282,11 @@ router.put('/users/:id', authenticateToken, isAdmin, async (req, res) => {
     if (role) updateData.role = role;
 
     if (password && password.trim() !== '') {
+      if (password.trim().length < PASSWORD_MIN_LENGTH) {
+        return res.status(400).json({
+          error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+        });
+      }
       updateData.password = await bcrypt.hash(password, 10);
     }
 

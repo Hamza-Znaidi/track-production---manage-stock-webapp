@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import authService from '@/lib/auth';
-import { Factory, Cpu, PackageCheck, Container,MessageSquareShare,Bolt,Boxes, Ticket , DiamondPlus,SquarePen, Cog} from 'lucide-react';
+import { Factory, Cpu, PackageCheck ,PackageX, Container,MessageSquareShare,Bolt,Boxes, Ticket , DiamondPlus,SquarePen, Cog} from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import AppDropdown from '@/components/AppDropdown';
@@ -390,7 +390,7 @@ export default function AdminStockPage() {
               {/* Stock Items Table */}
               {filteredItems.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-16 text-center">
-                  <div className="text-4xl sm:text-6xl mb-3 sm:mb-4">📦</div>
+                  <div className="text-4xl sm:text-6xl mb-3 sm:mb-4"><PackageX className='w-14 h-14 mb-4 mx-auto'/></div>
                   <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No Stock Items Found</h3>
                   <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
                     {searchQuery || categoryFilter !== 'ALL' || lowStockFilter
@@ -429,6 +429,9 @@ export default function AdminStockPage() {
                                 <span className="text-xl hidden sm:inline">{catConfig.icon}</span>
                                 <div className="min-w-0">
                                   <p className="font-semibold text-gray-900 text-xs sm:text-base truncate">{item.name}</p>
+                                  {item.code && (
+                                    <p className="text-xs font-mono text-indigo-600 truncate">{item.code}</p>
+                                  )}
                                   {item.description && (
                                     <p className="text-xs text-gray-500 truncate max-w-xs hidden sm:block">{item.description}</p>
                                   )}
@@ -669,6 +672,20 @@ export default function AdminStockPage() {
                     placeholder="e.g., Steel Rod, Circuit Board"
                   />
                 </div>
+
+                {modalMode === 'edit' && selectedItem?.code && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Stock Code
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedItem.code}
+                      readOnly
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-200 bg-gray-50 text-gray-700 rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                )}
 
                 <div className="md:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import authService from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
+import { FilePlusCorner , Warehouse, BarChart,UserCog,ClipboardX,OctagonAlert ,Check , UserRoundPlus,UserRoundPen} from 'lucide-react';
 import AppDropdown from '@/components/AppDropdown';
 import api from '@/lib/axios';
 import { confirmToast, notifyError, notifySuccess } from '@/lib/toast';
@@ -30,6 +31,9 @@ const SUB_ROLE_COLORS = {
   QUALITY:  'bg-purple-100 text-purple-800',
   DELIVERY: 'bg-red-100 text-red-800',
 };
+
+const PASSWORD_MIN_LENGTH = 6;
+
 export default function WorkersManagement() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -134,6 +138,28 @@ export default function WorkersManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const trimmedPassword = formData.password.trim();
+
+    if (modalMode === 'create' && trimmedPassword.length < PASSWORD_MIN_LENGTH) {
+      notifyError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+
+    if (modalMode === 'edit' && trimmedPassword !== '' && trimmedPassword.length < PASSWORD_MIN_LENGTH) {
+      notifyError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+
+    if (
+      modalMode === 'edit' &&
+      selectedWorker?.id === user?.id &&
+      selectedWorker?.role === 'ADMIN' &&
+      formData.role !== 'ADMIN'
+    ) {
+      notifyError('You cannot change your own admin role');
+      return;
+    }
 
     // Frontend validation
     if (formData.role === 'WORKER' && formData.subRoles.length === 0) {
@@ -381,8 +407,18 @@ export default function WorkersManagement() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                {modalMode === 'create' ? '➕ Add New User' : '✏️ Edit User'}
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                {modalMode === 'create' ? (
+                  <>
+                    <UserRoundPlus className="w-5 h-5" />
+                    Add New User
+                  </>
+                ) : (
+                  <>
+                    <UserRoundPen className="w-5 h-5" />
+                    Edit User
+                  </>
+                )}
               </h3>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,6 +456,14 @@ export default function WorkersManagement() {
                   placeholder="Enter password"
                   required={modalMode === 'create'}
                 />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Password must be at least {PASSWORD_MIN_LENGTH} characters.
+                </p>
+                {formData.password.trim() !== '' && formData.password.trim().length < PASSWORD_MIN_LENGTH && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                    <OctagonAlert className='w-4 h-4' /> Password is too short.
+                  </p>
+                )}
               </div>
 
               {/* Role */}
@@ -429,12 +473,24 @@ export default function WorkersManagement() {
                   name="role"
                   value={formData.role}
                   onChange={handleInputChange}
+                  disabled={
+                    modalMode === 'edit' &&
+                    selectedWorker?.id === user?.id &&
+                    selectedWorker?.role === 'ADMIN'
+                  }
                   options={[
                     { value: 'WORKER', label: 'Worker' },
                     { value: 'ADMIN', label: 'Admin' },
                   ]}
                   className="w-full px-4 py-2"
                 />
+                {modalMode === 'edit' &&
+                  selectedWorker?.id === user?.id &&
+                  selectedWorker?.role === 'ADMIN' && (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <OctagonAlert className='w-4 h-4' /> You cannot change your own admin role.
+                    </p>
+                  )}
               </div>
 
               {/* Sub-Roles — Only visible when role is WORKER */}
@@ -475,17 +531,17 @@ export default function WorkersManagement() {
                   </div>
 
                   {/* Show selected count */}
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.subRoles.length === 0 ? (
-                      <span className="text-red-500 dark:text-red-400">⚠️ No sub-roles selected</span>
-                    ) : (
-                      <span className="text-green-600 dark:text-green-400">✅ {formData.subRoles.length} sub-role{formData.subRoles.length > 1 ? 's' : ''} selected</span>
-                    )}
-                  </p>
-                </div>
-              )}
+                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            {formData.subRoles.length === 0 ? (
+                              <span className="text-red-500 dark:text-red-400 flex items-center gap-1"><OctagonAlert className='w-4 h-4' /> No sub-roles selected</span>
+                            ) : (
+                              <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><Check className='w-4 h-4' /> {formData.subRoles.length} sub-role{formData.subRoles.length > 1 ? 's' : ''} selected</span>
+                            )}
+                            </p>
+                          </div>
+                          )}
 
-              {/* Buttons */}
+                          {/* Buttons */}
               <div className="flex space-x-3 pt-2">
                 <button
                   type="button"

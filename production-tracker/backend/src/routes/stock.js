@@ -14,6 +14,32 @@ const VALID_CATEGORIES = [
   'CONSUMABLE',
 ];
 
+const CATEGORY_PREFIX_MAP = {
+  RAW_MATERIAL: 'RM',
+  COMPONENT: 'CP',
+  FINISHED_PRODUCT: 'FP',
+  TOOL: 'TL',
+  CONSUMABLE: 'CM',
+};
+
+const STOCK_CODE_DIGITS = 4;
+
+function formatStockCode(category, sequenceNumber) {
+  const prefix = CATEGORY_PREFIX_MAP[category];
+  const paddedNumber = String(sequenceNumber).padStart(STOCK_CODE_DIGITS, '0');
+  return `${prefix}${paddedNumber}`;
+}
+
+async function generateNextStockCode(tx, category) {
+  const counter = await tx.stockCodeCounter.upsert({
+    where: { category },
+    update: { lastNumber: { increment: 1 } },
+    create: { category, lastNumber: 1 },
+  });
+
+  return formatStockCode(category, counter.lastNumber);
+}
+
 /**
  * GET /api/stock
  * Get all stock items (All users can view)
@@ -29,9 +55,12 @@ router.get('/', authenticateToken, async (req, res) => {
       where.category = category;
     }
 
-    // Search by name
+    // Search by name or code
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const stockItems = await prisma.stockItem.findMany({
@@ -94,25 +123,30 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
       });
     }
 
-    const stockItem = await prisma.stockItem.create({
-      data: {
-        name,
-        description: description || null,
-        category,
-        quantity: parseInt(quantity) || 0,
-        unit,
-        minQuantity: parseInt(minQuantity) || 10,
-        location: location || null,
-        supplier: supplier || null,
-        price: price ? parseFloat(price) : null,
-        notes: notes || null,
-        createdById: req.user.id,
-      },
-      include: {
-        createdBy: {
-          select: { id: true, username: true },
+    const stockItem = await prisma.$transaction(async (tx) => {
+      const code = await generateNextStockCode(tx, category);
+
+      return tx.stockItem.create({
+        data: {
+          code,
+          name,
+          description: description || null,
+          category,
+          quantity: parseInt(quantity) || 0,
+          unit,
+          minQuantity: parseInt(minQuantity) || 10,
+          location: location || null,
+          supplier: supplier || null,
+          price: price ? parseFloat(price) : null,
+          notes: notes || null,
+          createdById: req.user.id,
         },
-      },
+        include: {
+          createdBy: {
+            select: { id: true, username: true },
+          },
+        },
+      });
     });
 
     res.status(201).json({
@@ -121,6 +155,9 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Create stock item error:', error);
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ error: 'Generated stock code already exists. Please retry.' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -158,9 +195,11 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     }
 
     const updateData = {};
+    let normalizedCategory = null;
     if (name) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (category && VALID_CATEGORIES.includes(category)) {
+      normalizedCategory = category;
       updateData.category = category;
     }
     if (quantity !== undefined) updateData.quantity = parseInt(quantity);
@@ -171,14 +210,21 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
     if (notes !== undefined) updateData.notes = notes;
 
-    const stockItem = await prisma.stockItem.update({
-      where: { id: stockId },
-      data: updateData,
-      include: {
-        createdBy: {
-          select: { id: true, username: true },
+    const stockItem = await prisma.$transaction(async (tx) => {
+      if (normalizedCategory && normalizedCategory !== existingStockItem.category) {
+        // Category change requires a new per-category code to preserve prefix semantics.
+        updateData.code = await generateNextStockCode(tx, normalizedCategory);
+      }
+
+      return tx.stockItem.update({
+        where: { id: stockId },
+        data: updateData,
+        include: {
+          createdBy: {
+            select: { id: true, username: true },
+          },
         },
-      },
+      });
     });
 
     await notifyLowStockCrossing(prisma, {
@@ -196,6 +242,9 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     console.error('Update stock item error:', error);
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Stock item not found' });
+    }
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ error: 'Generated stock code already exists. Please retry.' });
     }
     res.status(500).json({ error: 'Internal server error' });
   }

@@ -207,7 +207,10 @@ export default function WorkerStockPage() {
   };
 
   const filteredStock = stockItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const normalizedQuery = searchQuery.toLowerCase();
+    const matchesSearch =
+      item.name.toLowerCase().includes(normalizedQuery) ||
+      (item.code || '').toLowerCase().includes(normalizedQuery);
     const matchesCategory = categoryFilter === 'ALL' || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
@@ -308,7 +311,7 @@ export default function WorkerStockPage() {
                     <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Search by name..."
+                      placeholder="Search by name or code..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
@@ -349,6 +352,9 @@ export default function WorkerStockPage() {
                               <span>{catConfig.icon}</span>
                               <div>
                                 <h3 className="font-bold text-gray-900">{item.name}</h3>
+                                {item.code && (
+                                  <p className="text-xs font-mono text-indigo-600 mt-0.5">{item.code}</p>
+                                )}
                                 <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full mt-1 ${catConfig.color}`}>
                                   {catConfig.label}
                                 </span>
@@ -432,6 +438,11 @@ export default function WorkerStockPage() {
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-2">
                                 <h3 className="font-bold text-gray-900">{reservation.stockItem.name}</h3>
+                                {reservation.stockItem.code && (
+                                  <span className="text-xs font-mono text-indigo-600">
+                                    {reservation.stockItem.code}
+                                  </span>
+                                )}
                                 <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${statusConfig.color}`}>
                                   {statusConfig.label}
                                 </span>

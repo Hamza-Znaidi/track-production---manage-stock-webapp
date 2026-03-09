@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FilePlusCorner , Warehouse, BarChart,Settings} from 'lucide-react';
+import { FilePlusCorner , Warehouse, BarChart,UserCog,ClipboardX } from 'lucide-react';
 import authService from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
@@ -226,7 +226,7 @@ export default function AdminDashboard() {
 
               {recentWorkOrders.length === 0 ? (
                 <div className="p-8 text-center">
-                  <div className="text-4xl mb-3">📋</div>
+                  <div className="text-4xl mb-3"><ClipboardX className='w-14 h-14 mb-4 mt-20 mx-auto '/> </div>
                   <p className="text-gray-500 text-sm">No work orders yet</p>
                   <button
                     onClick={() => router.push('/admin/workorders/new')}
@@ -388,7 +388,7 @@ export default function AdminDashboard() {
                 {
                   label: 'Manage Workers',
                   desc: 'Edit permissions',
-                  icon: <Settings className='text-purple-600' size={24} />,
+                  icon: <UserCog  className='text-purple-600' size={24} />,
                   color: 'hover:border-purple-500 hover:bg-purple-50',
                   action: () => router.push('/admin/workers'),
                 },
@@ -396,7 +396,7 @@ export default function AdminDashboard() {
                 <button
                   key={action.label}
                   onClick={action.action}
-                  className={`flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl transition-all duration-200 text-center modern-hover modern-pulse ${action.color}`}
+                  className={`flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl transition-all duration-200 text-center modern-hover  ${action.color}`}
                 >
                   <span className="text-3xl mb-2">{action.icon}</span>
                   <p className="font-semibold text-gray-900 text-sm">{action.label}</p>

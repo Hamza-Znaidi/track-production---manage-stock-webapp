@@ -2,11 +2,12 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileSearchCorner, SquarePen  , Route ,Zap,CircleCheckBig,SkipForward,CircleX, CircleDotDashed,BriefcaseBusiness,PencilRuler,MonitorCog,Store,Cog,Wrench,Search,Truck,UserRoundSearch,RotateCcw,MessageSquareShare} from "lucide-react";
+import { FileSearchCorner, SquarePen  , Route ,Zap,CircleCheckBig,SkipForward,CircleX, CircleDotDashed,BriefcaseBusiness,PencilRuler,MonitorCog,Store,Cog,Wrench,Search,Truck,UserRoundSearch,RotateCcw,MessageSquareShare, NotebookPen} from "lucide-react";
 import authService from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import NotificationBell from "@/components/NotificationBell";
 import AppDropdown from "@/components/AppDropdown";
+import WorkOrderQRCode from "@/components/WorkOrderQRCode";
 import api from "@/lib/axios";
 import chatAPI from "@/lib/chat";
 import { notifyError, notifySuccess } from "@/lib/toast";
@@ -443,6 +444,11 @@ const getWorkersForStage = (subRole) => {
                   </div>
                 </div>
               </div>
+
+              <WorkOrderQRCode
+                workOrderNumber={workOrder.workOrderNumber}
+                qrCode={workOrder.qrCode}
+              />
             </div>
           </div>
 

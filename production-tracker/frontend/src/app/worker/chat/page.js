@@ -12,9 +12,8 @@ import { MessageCircle, MessageCirclePlus } from 'lucide-react';
 
 export default function WorkerChatPage() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  const user = authService.getCurrentUser();
   const [selectedThreadId, setSelectedThreadId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -22,27 +21,24 @@ export default function WorkerChatPage() {
       return;
     }
 
-    const currentUser = authService.getCurrentUser();
-    if (currentUser.role !== 'WORKER') {
-      router.push('/worker');
+    if (user?.role !== 'WORKER') {
+      router.push('/admin');
       return;
     }
 
-    setUser(currentUser);
-    setIsLoading(false);
     initSocket();
 
     return () => {
       disconnectSocket();
     };
-  }, [router]);
+  }, [router, user?.role]);
 
   const handleLogout = () => {
     authService.logout();
     router.push('/');
   };
 
-  if (isLoading) {
+  if (!authService.isAuthenticated() || user?.role !== 'WORKER') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

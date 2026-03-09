@@ -1,5 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const QRCode = require('qrcode');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -30,6 +31,22 @@ const normalizeDeliveryWeek = (deliveryInput) => {
   }
 
   return `WK${parseInt(match[1], 10)}`;
+};
+
+const normalizeScanValue = (value) => {
+  if (!value) return '';
+  return String(value).trim();
+};
+
+const buildWorkOrderQrPayload = (workOrderNumber) => normalizeScanValue(workOrderNumber);
+
+const generateWorkOrderQrDataUrl = async (workOrderNumber) => {
+  const payload = buildWorkOrderQrPayload(workOrderNumber);
+  return QRCode.toDataURL(payload, {
+    width: 320,
+    margin: 1,
+    errorCorrectionLevel: 'M',
+  });
 };
 
 /**
@@ -108,6 +125,60 @@ router.get('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get work orders error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/workorders/lookup/:scanValue
+ * Resolve scanned QR value to work order and optional worker stage.
+ */
+router.get('/lookup/:scanValue', authenticateToken, async (req, res) => {
+  try {
+    const scanValue = normalizeScanValue(decodeURIComponent(req.params.scanValue || ''));
+    if (!scanValue) {
+      return res.status(400).json({ error: 'Scan value is required' });
+    }
+
+    const where = {
+      workOrderNumber: {
+        equals: scanValue,
+        mode: 'insensitive',
+      },
+    };
+
+    if (req.user.role !== 'ADMIN') {
+      where.stages = {
+        some: {
+          assignedToId: req.user.id,
+        },
+      };
+    }
+
+    const workOrder = await prisma.workOrder.findFirst({
+      where,
+      include: {
+        stages: {
+          where: req.user.role === 'ADMIN' ? undefined : { assignedToId: req.user.id },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!workOrder) {
+      return res.status(404).json({ error: 'No work order found for this QR code' });
+    }
+
+    const assignedStageId =
+      req.user.role === 'ADMIN' ? null : (workOrder.stages[0]?.id || null);
+
+    return res.json({
+      workOrderId: workOrder.id,
+      workOrderNumber: workOrder.workOrderNumber,
+      stageId: assignedStageId,
+    });
+  } catch (error) {
+    console.error('Lookup work order by scan error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -273,6 +344,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
         quantity: parseInt(quantity),
         designNumber,
         deliveryWeek: normalizedDeliveryWeek,
+        qrCode: await generateWorkOrderQrDataUrl(workOrderNumber.trim()),
         notes: notes || null,
         status: 'PENDING',
         createdById: req.user.id,

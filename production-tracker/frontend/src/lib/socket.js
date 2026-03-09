@@ -14,9 +14,13 @@ const initSocket = () => {
   }
 
   const token = authService.getToken();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  // Prefer explicit socket origin; fallback strips /api from API URL for compatibility.
+  const socketUrl =
+    process.env.NEXT_PUBLIC_SOCKET_URL ||
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, '') ||
+    'http://localhost:5000';
 
-  socket = io(apiUrl, {
+  socket = io(socketUrl, {
     auth: {
       token,
     },

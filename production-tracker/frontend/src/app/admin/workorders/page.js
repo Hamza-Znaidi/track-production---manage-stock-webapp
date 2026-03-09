@@ -6,8 +6,10 @@ import authService from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import AppDropdown from '@/components/AppDropdown';
+import QRScannerModal from '@/components/QRScannerModal';
 import api from '@/lib/axios';
 import { confirmToast, notifyError, notifySuccess } from '@/lib/toast';
+import { QrCode,ClipboardX } from 'lucide-react';
 
 // Status badge config
 const STATUS_CONFIG = {
@@ -35,27 +37,13 @@ const STATUS_CONFIG = {
 
 export default function WorkOrdersPage() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [workOrders, setWorkOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/');
-      return;
-    }
-    const currentUser = authService.getCurrentUser();
-    if (currentUser.role !== 'ADMIN') {
-      router.push('/worker');
-      return;
-    }
-    setUser(currentUser);
-    fetchWorkOrders();
-  }, [router]);
-
-  const fetchWorkOrders = async () => {
+  async function fetchWorkOrders() {
     try {
       const response = await api.get('/workorders');
       setWorkOrders(response.data.workOrders);
@@ -65,7 +53,7 @@ export default function WorkOrdersPage() {
       notifyError('Failed to load work orders');
       setIsLoading(false);
     }
-  };
+  }
 
   const handleDelete = async (id, workOrderNumber) => {
     confirmToast({
@@ -88,6 +76,54 @@ export default function WorkOrdersPage() {
     authService.logout();
     router.push('/');
   };
+
+  const handleScannedCode = async (rawValue) => {
+    const scannedValue = (rawValue || '').trim();
+    setIsScannerOpen(false);
+
+    if (!scannedValue) {
+      notifyError('Scanned QR code is empty');
+      return;
+    }
+
+    setSearchQuery(scannedValue);
+
+    const exactMatch = workOrders.find(
+      (workOrder) => workOrder.workOrderNumber?.toLowerCase() === scannedValue.toLowerCase()
+    );
+
+    if (exactMatch) {
+      notifySuccess(`Found ${exactMatch.workOrderNumber}`);
+      router.push(`/admin/workorders/${exactMatch.id}`);
+      return;
+    }
+
+    try {
+      const response = await api.get(`/workorders/lookup/${encodeURIComponent(scannedValue)}`);
+      const workOrderId = response.data?.workOrderId;
+      if (workOrderId) {
+        notifySuccess(`Found ${response.data?.workOrderNumber || scannedValue}`);
+        router.push(`/admin/workorders/${workOrderId}`);
+        return;
+      }
+    } catch (lookupError) {
+      notifyError('No matching work order found from this QR code');
+    }
+  };
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      router.push('/');
+      return;
+    }
+    const currentUser = authService.getCurrentUser();
+    if (currentUser.role !== 'ADMIN') {
+      router.push('/worker');
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchWorkOrders();
+  }, [router]);
 
   // Filter work orders
   const filteredWorkOrders = workOrders.filter((wo) => {
@@ -153,7 +189,7 @@ export default function WorkOrdersPage() {
           </div>
 
           {/* Search and Filter */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-4 items-center">
             {/* Search */}
             <div className="flex-1 min-w-48 relative">
               <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,6 +203,15 @@ export default function WorkOrdersPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
               />
             </div>
+
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-indigo-700 transition inline-flex items-center gap-2 text-sm font-medium"
+              title="Scan work order QR"
+            >
+              <QrCode className="w-4 h-4" />
+              Scan
+            </button>
 
             {/* Status Filter */}
             <AppDropdown
@@ -187,7 +232,7 @@ export default function WorkOrdersPage() {
           {/* Work Orders Table */}
           {filteredWorkOrders.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 text-center">
-              <div className="text-6xl mb-4">📋</div>
+              <div className="text-6xl mb-4"><ClipboardX className='w-14 h-14 mb-4 mt-10 mx-auto '/> </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Work Orders Found</h3>
               <p className="text-gray-500 mb-6">
                 {searchQuery || statusFilter !== 'ALL'
@@ -325,6 +370,13 @@ export default function WorkOrdersPage() {
           )}
         </main>
       </div>
+
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleScannedCode}
+        title="Scan Work Order"
+      />
     </div>
   );
 }

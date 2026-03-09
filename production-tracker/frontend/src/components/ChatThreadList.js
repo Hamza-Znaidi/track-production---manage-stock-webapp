@@ -185,22 +185,22 @@ export default function ChatThreadList({
       </div>
 
       {/* Threads list */}
-      <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : filteredThreads.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            <p className="text-sm">
-              {filter === 'all'
-                ? 'No conversations yet. Start a new chat!'
-                : `No ${filter === 'direct' ? 'direct' : 'work order'} conversations.`}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {filteredThreads.map((thread) => {
+        <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : filteredThreads.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">
+          <p className="text-sm">
+            {filter === 'all'
+              ? 'No conversations yet. Start a new chat!'
+              : `No ${filter === 'direct' ? 'direct' : 'work order'} conversations.`}
+          </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+          {filteredThreads.map((thread) => {
               const isSelected = thread.id === selectedThreadId;
               const otherUser = thread.type === 'DIRECT'
                 ? thread.participants?.find((p) => p.userId !== currentUserId)?.user

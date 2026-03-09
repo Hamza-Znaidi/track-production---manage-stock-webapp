@@ -5,14 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import authService from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
+import WorkOrderQRCode from '@/components/WorkOrderQRCode';
 import api from '@/lib/axios';
-import { notifyError } from '@/lib/toast';
+import { notifyError, notifySuccess } from '@/lib/toast';
 import {
   Pause,
   Zap,
   CircleCheckBig,
   SkipForward,
   CircleX,
+  Undo2,
   BriefcaseBusiness,
   PencilRuler,
   MonitorCog,
@@ -26,6 +28,7 @@ import {
   Factory,
   UserRound,
   StickyNote,
+  Ban,
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -91,6 +94,7 @@ export default function WorkerTaskDetailsPage() {
   const [workOrder, setWorkOrder] = useState(null);
   const [currentStageId, setCurrentStageId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [updatingStage, setUpdatingStage] = useState(null);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -148,6 +152,52 @@ export default function WorkerTaskDetailsPage() {
     return [...stages].sort(
       (a, b) => STAGE_ORDER.indexOf(a.subRole) - STAGE_ORDER.indexOf(b.subRole)
     );
+  };
+
+  const getBlockingStage = (stage, allStages) => {
+    const currentIndex = STAGE_ORDER.indexOf(stage.subRole);
+    if (currentIndex <= 0) return null;
+
+    for (let index = 0; index < currentIndex; index += 1) {
+      const previousSubRole = STAGE_ORDER[index];
+      const previousStage = allStages.find((entry) => entry.subRole === previousSubRole);
+
+      if (!previousStage) continue;
+      if (!previousStage.assignedToId) continue;
+
+      const isFinal = previousStage.status === 'COMPLETED' || previousStage.status === 'SKIPPED';
+      if (!isFinal) return previousStage;
+    }
+
+    return null;
+  };
+
+  const handleStartTask = async (stage) => {
+    setUpdatingStage(stage.id);
+
+    try {
+      await api.put(`/stages/${stage.id}`, { status: 'IN_PROGRESS' });
+      notifySuccess('Task marked as in progress!');
+      await fetchWorkOrderDetails(stage.id);
+    } catch (error) {
+      notifyError(error.response?.data?.error || 'Failed to start task');
+    } finally {
+      setUpdatingStage(null);
+    }
+  };
+
+  const handleUpdateTaskStatus = async (stage, nextStatus) => {
+    setUpdatingStage(stage.id);
+
+    try {
+      await api.put(`/stages/${stage.id}`, { status: nextStatus });
+      notifySuccess(`Task marked as ${nextStatus.replace('_', ' ').toLowerCase()}!`);
+      await fetchWorkOrderDetails(stage.id);
+    } catch (error) {
+      notifyError(error.response?.data?.error || 'Failed to update task');
+    } finally {
+      setUpdatingStage(null);
+    }
   };
 
   if (isLoading) {
@@ -330,6 +380,11 @@ export default function WorkerTaskDetailsPage() {
                   </div>
                 </div>
               </div>
+
+              <WorkOrderQRCode
+                workOrderNumber={workOrder.workOrderNumber}
+                qrCode={workOrder.qrCode}
+              />
             </div>
           </div>
 
@@ -348,6 +403,12 @@ export default function WorkerTaskDetailsPage() {
                 <div className="space-y-4">
                   {sortedStages.map((stage, index) => {
                     const stageStatus = STATUS_CONFIG[stage.status] || STATUS_CONFIG.PENDING;
+                    const isCurrentTask = stage.id === currentStageId;
+                    const blockingStage =
+                      isCurrentTask && stage.status === 'PENDING'
+                        ? getBlockingStage(stage, workOrder.stages)
+                        : null;
+                    const isBlocked = Boolean(blockingStage);
 
                     return (
                       <div key={stage.id} className="relative flex items-start space-x-4">
@@ -415,6 +476,58 @@ export default function WorkerTaskDetailsPage() {
                                   <StickyNote className="w-3.5 h-3.5" />
                                   {stage.notes}
                                 </p>
+                              )}
+
+                              {isCurrentTask && stage.status === 'PENDING' && (
+                                <div className="mt-3 space-y-2">
+                                  {isBlocked && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                      <p className="text-xs text-amber-800 font-medium inline-flex items-center gap-1">
+                                        <Ban className="w-3.5 h-3.5" />
+                                        Blocked
+                                      </p>
+                                      <p className="text-sm text-amber-700 mt-1">
+                                        Waiting for {blockingStage?.subRole} stage to be completed or skipped.
+                                      </p>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => handleStartTask(stage)}
+                                    disabled={updatingStage === stage.id || isBlocked}
+                                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Zap className="w-4 h-4" />
+                                    <span>
+                                      {updatingStage === stage.id
+                                        ? 'Starting...'
+                                        : isBlocked
+                                          ? 'Blocked'
+                                          : 'Start Task'}
+                                    </span>
+                                  </button>
+                                </div>
+                              )}
+
+                              {isCurrentTask && stage.status === 'IN_PROGRESS' && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => handleUpdateTaskStatus(stage, 'COMPLETED')}
+                                    disabled={updatingStage === stage.id}
+                                    className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <CircleCheckBig className="w-4 h-4" />
+                                    <span>{updatingStage === stage.id ? 'Saving...' : 'Mark Complete'}</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleUpdateTaskStatus(stage, 'PENDING')}
+                                    disabled={updatingStage === stage.id}
+                                    className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Undo2 className="w-4 h-4" />
+                                    <span>{updatingStage === stage.id ? 'Saving...' : 'Cancel Task'}</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>

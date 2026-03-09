@@ -22,8 +22,11 @@ import {
   Undo2,
   Ban,
   X,
+  QrCode,
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import QRScannerModal from '@/components/QRScannerModal';
+import WorkOrderQRCode from '@/components/WorkOrderQRCode';
 import api from '@/lib/axios';
 import { notifyError, notifySuccess } from '@/lib/toast';
 
@@ -49,6 +52,7 @@ export default function WorkerTasksPage() {
   const [notesText, setNotesText] = useState('');
   const [activeTab, setActiveTab] = useState('ACTIVE');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -105,6 +109,41 @@ export default function WorkerTasksPage() {
 
   const openTaskDetails = (stageId) => {
     router.push(`/worker/tasks/${stageId}`);
+  };
+
+  const handleScannedCode = async (rawValue) => {
+    const scannedValue = (rawValue || '').trim();
+    setIsScannerOpen(false);
+
+    if (!scannedValue) {
+      notifyError('Scanned QR code is empty');
+      return;
+    }
+
+    setSearchQuery(scannedValue);
+
+    const localMatch = stages.find(
+      (stage) => stage.workOrder?.workOrderNumber?.toLowerCase() === scannedValue.toLowerCase()
+    );
+
+    if (localMatch) {
+      notifySuccess(`Found ${localMatch.workOrder?.workOrderNumber}`);
+      openTaskDetails(localMatch.id);
+      return;
+    }
+
+    try {
+      const response = await api.get(`/workorders/lookup/${encodeURIComponent(scannedValue)}`);
+      if (response.data?.stageId) {
+        notifySuccess(`Found ${response.data?.workOrderNumber || scannedValue}`);
+        openTaskDetails(response.data.stageId);
+        return;
+      }
+
+      notifyError('Work order found, but no assigned task was available for your account');
+    } catch (lookupError) {
+      notifyError('No matching task found from this QR code');
+    }
   };
 
   const activeTasksCount = stages.filter(
@@ -248,7 +287,8 @@ export default function WorkerTasksPage() {
 
           {/* Search */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 modern-hover">
-            <div className="flex-1 min-w-48 relative">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-48 relative">
               <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -257,6 +297,15 @@ export default function WorkerTasksPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               />
+            </div>
+              <button
+                onClick={() => setIsScannerOpen(true)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-indigo-700 transition inline-flex items-center gap-2 text-sm font-medium"
+                title="Scan work order QR"
+              >
+                <QrCode className="w-4 h-4" />
+                Scan
+              </button>
             </div>
           </div>
 
@@ -334,11 +383,20 @@ export default function WorkerTasksPage() {
                       </div>
 
                       {/* Delivery Week */}
-                      <div className="flex items-center space-x-2 mb-5">
-                        <span className="text-xs text-gray-500">Delivery:</span>
-                        <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2.5 py-1 rounded-full">
-                          {stage.workOrder.deliveryWeek}
-                        </span>
+                      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">Delivery:</span>
+                          <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                            {stage.workOrder.deliveryWeek}
+                          </span>
+                        </div>
+                        <div onClick={(event) => event.stopPropagation()}>
+                          <WorkOrderQRCode
+                            workOrderNumber={stage.workOrder?.workOrderNumber}
+                            qrCode={stage.workOrder?.qrCode}
+                            compact
+                          />
+                        </div>
                       </div>
 
                       {/* Notes */}
@@ -373,7 +431,7 @@ export default function WorkerTasksPage() {
                               handleUpdateStatus(stage.id, 'IN_PROGRESS');
                             }}
                             disabled={isUpdating || isBlocked}
-                            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed modern-hover modern-pulse"
+                            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed modern-hover "
                           >
                             {isUpdating ? (
                               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -393,7 +451,7 @@ export default function WorkerTasksPage() {
                                 openNotesModal(stage);
                               }}
                               disabled={isUpdating}
-                              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium transition disabled:opacity-50 modern-hover modern-pulse"
+                              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium transition disabled:opacity-50 modern-hover "
                             >
                               <CircleCheckBig className="w-4 h-4" />
                               <span>Mark Complete</span>
@@ -484,6 +542,13 @@ export default function WorkerTasksPage() {
           </div>
         </div>
       )}
+
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleScannedCode}
+        title="Scan Task Work Order"
+      />
     </div>
   );
 }

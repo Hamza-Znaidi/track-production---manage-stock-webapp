@@ -71,6 +71,7 @@ router.get('/my-tasks', authenticateToken, async (req, res) => {
             quantity: true,
             deliveryWeek: true,
             status: true,
+            qrCode: true,
           },
         },
         assignedTo: {
@@ -146,6 +147,7 @@ router.get('/my-completed', authenticateToken, async (req, res) => {
             quantity: true,
             deliveryWeek: true,
             status: true,
+            qrCode: true,
           },
         },
       },
