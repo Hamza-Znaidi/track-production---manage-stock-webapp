@@ -17,6 +17,8 @@ export default function NotificationBell({ role }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState(null);
+  const [isMobileDropdown, setIsMobileDropdown] = useState(false);
   const wrapperRef = useRef(null);
   const bellRef = useRef(null);
 
@@ -103,6 +105,51 @@ export default function NotificationBell({ role }) {
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) {
+      setDropdownStyle(null);
+      setIsMobileDropdown(false);
+      return;
+    }
+
+    const updateDropdownPosition = () => {
+      const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+      if (!wrapperRect) return;
+
+      const isMobile = window.innerWidth < 640;
+      setIsMobileDropdown(isMobile);
+
+      if (!isMobile) {
+        setDropdownStyle(null);
+        return;
+      }
+
+      const viewportPadding = 8;
+      const preferredWidth = 384;
+      const width = Math.min(preferredWidth, window.innerWidth - viewportPadding * 2);
+      const top = wrapperRect.bottom + 8;
+      const clampedLeft = Math.max(
+        viewportPadding,
+        Math.min(wrapperRect.right - width, window.innerWidth - width - viewportPadding),
+      );
+
+      setDropdownStyle({
+        top: `${top}px`,
+        left: `${clampedLeft}px`,
+        width: `${width}px`,
+      });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener('resize', updateDropdownPosition);
+    window.addEventListener('scroll', updateDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (unreadCount <= 0) return;
 
     bellRef.current?.startAnimation?.();
@@ -132,7 +179,10 @@ export default function NotificationBell({ role }) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden flex flex-col sm:w-96 ">
+        <div
+          className={`${isMobileDropdown ? 'fixed' : 'absolute right-0 mt-2 w-60 sm:w-96'} modern-enter bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden flex flex-col`}
+          style={dropdownStyle || undefined}
+        >
           <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-800">Recent Notifications</h3>
             {unreadInList > 0 && (
