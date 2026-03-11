@@ -10,6 +10,25 @@ const { createNotificationsForUsers } = require('../lib/notifications');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+const buildPublicFileUrl = (req, filename) => {
+  const configuredBaseUrl = process.env.PUBLIC_BASE_URL || process.env.BACKEND_URL;
+  const forwardedProto = req.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const forwardedHost = req.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = forwardedHost || req.get('host');
+
+  if (configuredBaseUrl) {
+    return `${configuredBaseUrl.replace(/\/$/, '')}/uploads/chat/${filename}`;
+  }
+
+  const protocol = forwardedProto || req.protocol;
+  const normalizedProtocol =
+    protocol === 'http' && host && !/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)
+      ? 'https'
+      : protocol;
+
+  return `${normalizedProtocol}://${host}/uploads/chat/${filename}`;
+};
+
 const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'chat');
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -294,7 +313,7 @@ router.post('/upload', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/chat/${req.file.filename}`;
+    const fileUrl = buildPublicFileUrl(req, req.file.filename);
     return res.status(201).json({
       attachment: {
         filename: req.file.originalname,

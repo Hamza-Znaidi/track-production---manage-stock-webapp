@@ -4,6 +4,24 @@ import { useEffect } from 'react';
 import Image from 'next/image';
 import { Paperclip } from 'lucide-react';
 
+const normalizeAttachmentUrl = (url) => {
+  if (!url || typeof url !== 'string' || !url.startsWith('http://')) {
+    return url;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1') {
+      return url;
+    }
+
+    parsedUrl.protocol = 'https:';
+    return parsedUrl.toString();
+  } catch {
+    return url.replace(/^http:\/\//, 'https://');
+  }
+};
+
 export default function ChatMessage({ message, currentUserId, onRead }) {
   const isOwn = message.senderId === currentUserId;
   const hasBeenRead = message.reads && message.reads.some(r => r.userId === currentUserId);
@@ -44,16 +62,19 @@ export default function ChatMessage({ message, currentUserId, onRead }) {
         
         {imageAttachments.length > 0 && (
           <div className="mt-2 space-y-2">
-            {imageAttachments.map((att) => (
+            {imageAttachments.map((att) => {
+              const attachmentUrl = normalizeAttachmentUrl(att.url);
+
+              return (
               <a
                 key={att.id}
-                href={att.url}
+                href={attachmentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block"
               >
                 <Image
-                  src={att.url}
+                  src={attachmentUrl}
                   alt={att.filename}
                   className="max-h-64 w-full rounded-lg object-cover border border-black/10"
                   loading="lazy"
@@ -62,16 +83,20 @@ export default function ChatMessage({ message, currentUserId, onRead }) {
                   height={256}
                 />
               </a>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {fileAttachments.length > 0 && (
           <div className="mt-2 space-y-1">
-            {fileAttachments.map((att) => (
+            {fileAttachments.map((att) => {
+              const attachmentUrl = normalizeAttachmentUrl(att.url);
+
+              return (
               <a
                 key={att.id}
-                href={att.url}
+                href={attachmentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`block text-xs underline ${
@@ -80,7 +105,8 @@ export default function ChatMessage({ message, currentUserId, onRead }) {
               >
                 <Paperclip className="w-3 h-3 mr-1 inline" /> {att.filename}
               </a>
-            ))}
+              );
+            })}
           </div>
         )}
 

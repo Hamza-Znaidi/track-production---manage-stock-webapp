@@ -2,6 +2,50 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+const normalizeAttachmentUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return url;
+  }
+
+  if (!url.startsWith('http://')) {
+    return url;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1') {
+      return url;
+    }
+
+    parsedUrl.protocol = 'https:';
+    return parsedUrl.toString();
+  } catch {
+    return url.replace(/^http:\/\//, 'https://');
+  }
+};
+
+const normalizeAttachments = (attachments = []) =>
+  attachments.map((attachment) => ({
+    ...attachment,
+    url: normalizeAttachmentUrl(attachment.url),
+  }));
+
+const normalizeMessage = (message) => ({
+  ...message,
+  attachments: normalizeAttachments(message.attachments),
+});
+
+const normalizeThreadMessages = (thread) => {
+  if (!thread?.messages) {
+    return thread;
+  }
+
+  return {
+    ...thread,
+    messages: thread.messages.map(normalizeMessage),
+  };
+};
+
 /**
  * Get or create a direct message thread between two users
  */
@@ -72,7 +116,7 @@ const getOrCreateDMThread = async (userId1, userId2) => {
     });
   }
 
-  return thread;
+  return normalizeThreadMessages(thread);
 };
 
 /**
@@ -182,7 +226,7 @@ const createWorkOrderThread = async (workOrderId, createdById, name = null) => {
     },
   });
 
-  return refreshedThread;
+  return normalizeThreadMessages(refreshedThread);
 };
 
 /**
@@ -233,7 +277,7 @@ const saveMessage = async (threadId, senderId, content, attachmentUrls = []) => 
     },
   });
 
-  return message;
+  return normalizeMessage(message);
 };
 
 /**
@@ -257,7 +301,7 @@ const getThreadMessages = async (threadId, limit = 50, offset = 0) => {
     skip: offset,
   });
 
-  return messages.reverse(); // Return in ascending order
+  return messages.reverse().map(normalizeMessage); // Return in ascending order
 };
 
 /**
