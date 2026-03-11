@@ -172,24 +172,24 @@ export default function AdminNotificationsPage() {
 
       <div className="lg:ml-64">
         <header className="bg-white shadow-sm mt-8 sm:mt-0">
-          <div className="px-4 sm:px-8 py-6 flex items-center justify-between gap-4">
+          <div className="px-4 sm:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifications</h1>
-              <p className="text-gray-600 mt-1">{unreadCount} unread of {total} total</p>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">{unreadCount} unread of {total} total</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <NotificationBell role="ADMIN" />
               <button
                 onClick={handleMarkAllRead}
                 disabled={unreadCount === 0}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 Mark All Read
               </button>
               <button
                 onClick={requestDeleteAll}
                 disabled={notifications.length === 0}
-                className="px-4 py-2 bg-red-100 border border-red-200 text-red-700 rounded-lg hover:bg-red-700 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 active:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 Clear All
               </button>
@@ -198,19 +198,19 @@ export default function AdminNotificationsPage() {
         </header>
         <main className="p-4 sm:p-8 modern-enter">
           {notifications.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 text-center">
-              <p className="text-xl font-semibold text-gray-900">No notifications yet</p>
-              <p className="text-gray-500 mt-2">You are all caught up.</p>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-16 text-center">
+              <p className="text-lg sm:text-xl font-semibold text-gray-900">No notifications yet</p>
+              <p className="text-sm sm:text-base text-gray-500 mt-2">You are all caught up.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`bg-white rounded-xl shadow-sm border p-4 ${notification.isRead ? 'border-gray-100' : 'border-indigo-200'}`}
+                  className={`bg-white rounded-xl shadow-sm border p-3 sm:p-4 ${notification.isRead ? 'border-gray-100' : 'border-indigo-200'}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${SEVERITY_CLASS[notification.severity] || SEVERITY_CLASS.INFO}`}>
                           {notification.severity}
@@ -229,11 +229,11 @@ export default function AdminNotificationsPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                       {!notification.isRead && (
                         <button
                           onClick={() => handleMarkRead(notification.id)}
-                          className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                          className="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded transition font-medium"
                         >
                           Mark read
                         </button>
@@ -241,9 +241,9 @@ export default function AdminNotificationsPage() {
                       <button
                         onClick={() => handleDeleteNotification(notification.id)}
                         disabled={deletingId === notification.id}
-                        className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                        className="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition font-medium disabled:opacity-50"
                       >
-                        {deletingId === notification.id ? 'Deleting...' : <Trash2 className="w-4 h-4" />}
+                        {deletingId === notification.id ? 'Deleting...' : <Trash2 className="w-4 h-4 inline sm:block" />}
                       </button>
                     </div>
                   </div>
@@ -257,7 +257,7 @@ export default function AdminNotificationsPage() {
               <button
                 onClick={() => fetchNotifications({ reset: false, startOffset: offset })}
                 disabled={isLoadingMore}
-                className="px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition disabled:opacity-50"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 active:bg-gray-950 transition disabled:opacity-50"
               >
                 {isLoadingMore ? 'Loading...' : 'Load More'}
               </button>
