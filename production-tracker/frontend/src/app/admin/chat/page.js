@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import authService from '@/lib/auth';
 import { MessageCirclePlus } from 'lucide-react';
@@ -12,12 +12,22 @@ import { initSocket, disconnectSocket } from '@/lib/socket';
 
 function AdminChatPageContent() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [selectedThreadId, setSelectedThreadId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const searchParams = useSearchParams();
 
-  useEffect(() => {
+  const [state, setState] = useState({
+    user: null,
+    selectedThreadId: null,
+    isLoading: true,
+  });
+
+  const { user, selectedThreadId, isLoading } = state;
+
+  const handleSelectThread = (threadId) => {
+    setState(prev => ({ ...prev, selectedThreadId: threadId }));
+  };
+
+  // Auth check and initialization - runs only once on mount
+  useLayoutEffect(() => {
     if (!authService.isAuthenticated()) {
       router.push('/');
       return;
@@ -29,29 +39,47 @@ function AdminChatPageContent() {
       return;
     }
 
-    setUser(currentUser);
-    setIsLoading(false);
+    // Initialize thread from URL params
+    const threadParam = searchParams.get('thread');
+    let selectedThreadId = null;
+    if (threadParam) {
+      const parsedThreadId = parseInt(threadParam, 10);
+      if (!Number.isNaN(parsedThreadId)) {
+        selectedThreadId = parsedThreadId;
+      }
+    }
+
+    setState({
+      user: currentUser,
+      selectedThreadId,
+      isLoading: false,
+    });
+  }, [router, searchParams]);
+
+  // Initialize socket once - separate from auth to prevent reconnects
+  useLayoutEffect(() => {
     initSocket();
 
     return () => {
       disconnectSocket();
     };
-  }, [router]);
-
-  useEffect(() => {
-    const threadParam = searchParams.get('thread');
-    if (!threadParam) return;
-
-    const parsedThreadId = parseInt(threadParam, 10);
-    if (!Number.isNaN(parsedThreadId)) {
-      setSelectedThreadId(parsedThreadId);
-    }
-  }, [searchParams]);
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
     router.push('/');
   };
+
+  // Update selected thread when URL params change
+  useLayoutEffect(() => {
+    const threadParam = searchParams.get('thread');
+    const parsedThreadId = threadParam ? parseInt(threadParam, 10) : null;
+    
+    if (!Number.isNaN(parsedThreadId) && selectedThreadId !== parsedThreadId) {
+      setState(prev => ({ ...prev, selectedThreadId: parsedThreadId }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   if (isLoading) {
     return (
@@ -82,7 +110,7 @@ function AdminChatPageContent() {
             {/* Thread list */}
             <div className="lg:col-span-1">
               <ChatThreadList
-                onSelectThread={setSelectedThreadId}
+                onSelectThread={handleSelectThread}
                 selectedThreadId={selectedThreadId}
                 currentUserId={user?.id}
                 currentUserRole={user?.role}
@@ -95,12 +123,12 @@ function AdminChatPageContent() {
                 <ChatThread
                   threadId={selectedThreadId}
                   currentUserId={user?.id}
-                  onClose={() => setSelectedThreadId(null)}
+                  onClose={() => handleSelectThread(null)}
                 />
               ) : (
                 <div className="bg-white rounded-lg shadow-sm p-12 text-center flex items-center justify-center h-full">
                   <div>
-                    <div className="text-6xl mb-4 inline "><MessageCirclePlus className='ml-35 mb-10 size-15' /></div>
+                    <div className="text-6xl mb-4 inline "><MessageCirclePlus className='mx-auto mb-5 size-15' /></div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">Start a Conversation</h3>
                     <p className="text-gray-500">Select a thread from the list to start messaging</p>
                   </div>
