@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Paperclip } from 'lucide-react';
 
 export default function ChatMessage({ message, currentUserId, onRead }) {
@@ -51,11 +52,13 @@ export default function ChatMessage({ message, currentUserId, onRead }) {
                 rel="noopener noreferrer"
                 className="block"
               >
-                <img
+                <Image
                   src={att.url}
                   alt={att.filename}
                   className="max-h-64 w-full rounded-lg object-cover border border-black/10"
                   loading="lazy"
+                  width={256}
+                  height={256}
                 />
               </a>
             ))}

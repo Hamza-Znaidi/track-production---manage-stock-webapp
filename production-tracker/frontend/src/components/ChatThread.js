@@ -244,8 +244,11 @@ export default function ChatThread({ threadId, currentUserId, onClose }) {
 
         {/* Typing indicator */}
         {typingUsers.size > 0 && (
-          <div className="text-xs text-gray-500">
-            <span>{Array.from(typingUsers).join(', ')} is typing...</span>
+          <div className="bg-gary-200">
+
+            <div className="h-4 w-4 bg-black rounded-full animate-bounce [animation-delay:0.3s]"></div>
+            <div className="h-4 w-4 bg-black rounded-full animate-bounce [animation-delay:0.1s]"></div>
+            <div className="h-4 w-4 bg-black rounded-full animate-bounce "></div>
           </div>
         )}
 

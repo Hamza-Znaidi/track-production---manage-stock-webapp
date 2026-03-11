@@ -306,6 +306,7 @@ export default function NewWorkOrderPage() {
                     placeholder="Enter work order number"
                   />
                   {errors.workOrderNumber && <p className={errorClass}>{errors.workOrderNumber.message}</p>}
+                  <p className='text-red-400 text-sm '>Be careful this field cannot be changed once submitted </p>
                 </div>
 
                 {/* ITEM */}
