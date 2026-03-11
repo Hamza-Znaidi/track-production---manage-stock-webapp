@@ -155,10 +155,10 @@ const workerNavItems = [
               key={item.name}
               href={item.href}
               onClick={handleNavClick}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 modern-hover ${
+              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 modern-hover  ${
                 isActive
-                  ? 'bg-indigo-50 text-indigo-600 font-semibold'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-indigo-50 text-indigo-600 font-semibold dark:bg-indigo-900/20 dark:text-indigo-400'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/20'
               }`}
             >
               <span className={isActive ? 'text-indigo-600' : 'text-gray-500'}>
@@ -181,7 +181,7 @@ const workerNavItems = [
             handleNavClick();
             onLogout();
           }}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 font-medium modern-hover"
+          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 font-medium modern-hover dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

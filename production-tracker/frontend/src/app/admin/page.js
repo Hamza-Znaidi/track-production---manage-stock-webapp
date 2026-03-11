@@ -243,7 +243,7 @@ export default function AdminDashboard() {
                       <div
                         key={wo.id}
                         onClick={() => router.push(`/admin/workorders/${wo.id}`)}
-                        className="px-6 py-4 hover:bg-gray-50 transition cursor-pointer modern-hover"
+                        className="px-6 py-4 hover:bg-gray-50 transition cursor-pointer modern-hover dark:hover:bg-gray-700/20"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3 min-w-0">
@@ -368,28 +368,28 @@ export default function AdminDashboard() {
                   label: 'New Work Order',
                   desc: 'Create work order',
                   icon: <FilePlusCorner className='text-blue-600' size={24} />,
-                  color: 'hover:border-indigo-500 hover:bg-indigo-50',
+                  color: 'hover:border-indigo-500 hover:bg-indigo-50 dark:hover:border-indigo-400 dark:hover:bg-indigo-900/20',
                   action: () => router.push('/admin/workorders/new'),
                 },
                 {
                   label: 'manage stock',
                   desc: 'Manage inventory',
                   icon:<Warehouse className='text-green-600' size={24} />,
-                  color: 'hover:border-green-500 hover:bg-green-50',
+                  color: 'hover:border-green-500 hover:bg-green-50 dark:hover:border-green-400 dark:hover:bg-green-900/20',
                   action: () => router.push('/admin/stock'),
                 },
                 {
                   label: 'View All Orders',
                   desc: 'Track production',
                   icon: <BarChart className='text-blue-600' size={24} />,
-                  color: 'hover:border-blue-500 hover:bg-blue-50',
+                  color: 'hover:border-blue-500 hover:bg-blue-50 dark:hover:border-blue-400 dark:hover:bg-blue-900/20',
                   action: () => router.push('/admin/workorders'),
                 },
                 {
                   label: 'Manage Workers',
                   desc: 'Edit permissions',
                   icon: <UserCog  className='text-purple-600' size={24} />,
-                  color: 'hover:border-purple-500 hover:bg-purple-50',
+                  color: 'hover:border-purple-500 hover:bg-purple-50 dark:hover:border-purple-400 dark:hover:bg-purple-900/20',
                   action: () => router.push('/admin/workers'),
                 },
               ].map((action) => (

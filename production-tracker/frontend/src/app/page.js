@@ -57,7 +57,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-65 from-white-500 via-indigo-500 to-white-500 ">
+    <div className="min-h-screen flex items-center justify-center bg-linear-65 from-white-500 via-indigo-500 to-white-500  ">
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 modern-hover modern-enter">
         {/* Header */}
         <div className="text-center mb-8">
@@ -199,5 +199,6 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+    
   );
 }

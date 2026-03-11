@@ -214,7 +214,7 @@ export default function ChatThreadList({
                 <div
                   key={thread.id}
                   className={`px-6 py-4 transition flex items-center justify-between gap-3 ${
-                    isSelected ? 'bg-indigo-50 border-l-4 border-indigo-600' : 'hover:bg-gray-50'
+                    isSelected ? 'bg-indigo-50 border-l-4 border-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-400 modern-pulse' : 'hover:bg-gray-50 dark:hover:bg-gray-700/20 modern-hover'
                   }`}
                 >
                   <button
@@ -270,10 +270,10 @@ export default function ChatThreadList({
 
       {/* New Chat Modal */}
       {showNewChatModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Start a Chat</h3>
+        <div className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl sm:max-w-2xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Start a Chat</h3>
               <button
                 onClick={() => setShowNewChatModal(false)}
                 className="text-gray-500 hover:text-gray-700"

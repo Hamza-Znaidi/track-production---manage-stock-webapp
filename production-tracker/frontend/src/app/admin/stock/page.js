@@ -374,7 +374,7 @@ export default function AdminStockPage() {
                   />
 
                   {/* Low Stock Toggle */}
-                  <label className="flex items-center space-x-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <label className="flex items-center space-x-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition">
                     <input
                       type="checkbox"
                       checked={lowStockFilter}
@@ -422,7 +422,7 @@ export default function AdminStockPage() {
                       {filteredItems.map(item => {
                         const catConfig = getCategoryConfig(item.category);
                         return (
-                          <tr key={item.id} className="hover:bg-gray-50 transition">
+                          <tr key={item.id} className="hover:bg-gray-50 transition dark:hover:bg-gray-700/20 modern-hover">
                             {/* Name */}
                             <td className="px-2 sm:px-4 py-3 sm:py-4">
                               <div className="flex items-center space-x-2">
@@ -570,7 +570,7 @@ export default function AdminStockPage() {
                         const statusConfig = RESERVATION_STATUS[res.status];
                         const catConfig = getCategoryConfig(res.stockItem.category);
                         return (
-                          <tr key={res.id} className="hover:bg-gray-50 transition">
+                          <tr key={res.id} className="hover:bg-gray-50 transition dark:hover:bg-gray-700/20 modern-hover">
                             {/* Item */}
                             <td className="px-2 sm:px-4 py-3 sm:py-4">
                               <div className="flex items-center space-x-1 sm:space-x-2 min-w-0">

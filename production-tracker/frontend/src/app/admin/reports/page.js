@@ -69,13 +69,13 @@ function CustomChartTooltip({ active, payload, label, labelPrefix, valueFormatte
 
 function ChartCard({ title, subtitle, icon: Icon, children }) {
   return (
-    <div className="bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-sm border border-gray-100 p-5 modern-hover">
+    <div className="bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-sm border border-gray-100 p-5 modern-hover dark:from-gray-800 dark:to-gray-900 dark:border-gray-700 dark:text-white">
       <div className="mb-4">
-        <h3 className="font-bold text-gray-900 flex items-center gap-2">
-          {Icon && <Icon className="w-4 h-4 text-gray-600" />}
+        <h3 className="font-bold text-gray-900 flex items-center gap-2 dark:text-white">
+          {Icon && <Icon className="w-4 h-4 text-gray-600 dark:text-white" />}
           <span>{title}</span>
         </h3>
-        {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-gray-500 mt-1 dark:text-white">{subtitle}</p>}
       </div>
       <div className="h-72">{children}</div>
     </div>
@@ -379,7 +379,7 @@ export default function AdminReportsPage() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Stage Bottlenecks" subtitle="Pending and in-progress by worker and sub-role" icon={Users}>
+            <ChartCard title="Stage Bottlenecks" subtitle="Pending and in-progress by worker and sub-role" icon={Users} >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData.stageBottleneckData} layout="vertical" margin={{ left: 20, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

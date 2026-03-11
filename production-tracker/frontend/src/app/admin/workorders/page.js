@@ -267,7 +267,7 @@ export default function WorkOrdersPage() {
                       return (
                         <tr
                           key={wo.id}
-                          className="hover:bg-gray-50 transition cursor-pointer"
+                          className="hover:bg-gray-50 transition cursor-pointer dark:hover:bg-gray-700/20 modern-hover"
                           onClick={() => router.push(`/admin/workorders/${wo.id}`)}
                         >
                           {/* WO Number */}

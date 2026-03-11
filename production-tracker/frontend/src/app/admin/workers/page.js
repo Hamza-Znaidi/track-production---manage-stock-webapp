@@ -313,7 +313,7 @@ export default function WorkersManagement() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {workers.map((worker) => (
-                    <tr key={worker.id} className="hover:bg-gray-50 transition">
+                    <tr key={worker.id} className="hover:bg-gray-50 transition dark:hover:bg-gray-700/20 modern-hover">
                       {/* User */}
                       <td className="px-6 py-4">
                         <div className="flex items-center">
@@ -404,7 +404,7 @@ export default function WorkersManagement() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto scrollbar-hide">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800">
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">

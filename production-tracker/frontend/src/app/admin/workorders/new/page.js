@@ -203,7 +203,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm transition text-black";
+  const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm transition text-black dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 modern-hover";
   const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
   const errorClass = "text-red-500 text-xs mt-1";
 
@@ -438,7 +438,7 @@ export default function NewWorkOrderPage() {
 
             {/* Stage Assignments */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex items-center justify-between gap-3">
+              <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex items-center justify-between gap-3 dark:bg-indigo-900/20 dark:border-indigo-400">
                 <h3 className="font-semibold text-indigo-900 flex items-center space-x-2">
                   <span><Users/></span>
                   <span>Production Stage Assignments</span>
@@ -524,7 +524,7 @@ export default function NewWorkOrderPage() {
                   </div>
                 )}
 
-                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-blue-900/20 dark:border-blue-400">
                   <p className="text-sm text-blue-800">
                     <strong><Info className='inline' /> Note:</strong> You can assign workers to stages now or leave them unassigned. 
                     Workers can be assigned or reassigned later from the work order detail page.
