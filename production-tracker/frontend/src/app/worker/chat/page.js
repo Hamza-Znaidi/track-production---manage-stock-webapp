@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import authService from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
@@ -12,33 +12,53 @@ import { MessageCircle, MessageCirclePlus } from 'lucide-react';
 
 export default function WorkerChatPage() {
   const router = useRouter();
-  const user = authService.getCurrentUser();
-  const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [state, setState] = useState({
+    user: null,
+    selectedThreadId: null,
+    isLoading: true,
+  });
 
-  useEffect(() => {
+  const { user, selectedThreadId, isLoading } = state;
+
+  const handleSelectThread = (threadId) => {
+    setState(prev => ({ ...prev, selectedThreadId: threadId }));
+  };
+
+  // Auth check and initialization - runs only on client after hydration
+  useLayoutEffect(() => {
     if (!authService.isAuthenticated()) {
       router.push('/');
       return;
     }
 
-    if (user?.role !== 'WORKER') {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser?.role !== 'WORKER') {
       router.push('/admin');
       return;
     }
 
+    setState({
+      user: currentUser,
+      selectedThreadId: null,
+      isLoading: false,
+    });
+  }, [router]);
+
+  // Initialize socket once - separate from auth to prevent reconnects
+  useLayoutEffect(() => {
     initSocket();
 
     return () => {
       disconnectSocket();
     };
-  }, [router, user?.role]);
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
     router.push('/');
   };
 
-  if (!authService.isAuthenticated() || user?.role !== 'WORKER') {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -67,7 +87,7 @@ export default function WorkerChatPage() {
             {/* Thread list */}
             <div className="lg:col-span-1">
               <ChatThreadList
-                onSelectThread={setSelectedThreadId}
+                onSelectThread={handleSelectThread}
                 selectedThreadId={selectedThreadId}
                 currentUserId={user?.id}
                 currentUserRole={user?.role}
@@ -80,7 +100,7 @@ export default function WorkerChatPage() {
                 <ChatThread
                   threadId={selectedThreadId}
                   currentUserId={user?.id}
-                  onClose={() => setSelectedThreadId(null)}
+                  onClose={() => handleSelectThread(null)}
                 />
               ) : (
                 <div className="bg-white rounded-lg shadow-sm p-12 text-center flex items-center justify-center h-full">
