@@ -244,7 +244,7 @@ export default function ChatThread({ threadId, currentUserId, onClose }) {
 
         {/* Typing indicator */}
         {typingUsers.size > 0 && (
-          <div className="bg-gray-200 px-3 py-1 rounded-full w-max m flex items-center gap-1">
+          <div className="bg-gray-200 px-3 py-1 rounded-full w-max mx-auto flex items-center gap-1">
 
             <div className="h-2 w-2 bg-black rounded-full animate-bounce [animation-delay:0.3s]"></div>
             <div className="h-2 w-2 bg-black rounded-full animate-bounce [animation-delay:0.1s]"></div>
