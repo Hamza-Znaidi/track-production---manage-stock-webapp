@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Image from 'next/image';
 import { Paperclip } from 'lucide-react';
 
@@ -57,6 +57,7 @@ export default function ChatMessage({ message, currentUserId, onRead }) {
                   alt={att.filename}
                   className="max-h-64 w-full rounded-lg object-cover border border-black/10"
                   loading="lazy"
+                  unoptimized
                   width={256}
                   height={256}
                 />
