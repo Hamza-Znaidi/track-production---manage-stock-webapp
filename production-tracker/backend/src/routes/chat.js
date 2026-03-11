@@ -393,7 +393,13 @@ router.post('/:threadId/messages', authenticateToken, async (req, res) => {
     // Emit to connected clients via Socket.IO
     const io = req.app.get('io');
     if (io) {
-      io.to(`thread:${threadIdNum}`).emit('message:new', {
+      const roomName = `thread:${threadIdNum}`;
+      console.log(`📨 Emitting message:new to room ${roomName}`, {
+        messageId: message.id,
+        senderId: req.user.id,
+        threadId: threadIdNum,
+      });
+      io.to(roomName).emit('message:new', {
         id: message.id,
         threadId: threadIdNum,
         senderId: req.user.id,
@@ -403,6 +409,8 @@ router.post('/:threadId/messages', authenticateToken, async (req, res) => {
         attachments: message.attachments,
         reads: message.reads,
       });
+    } else {
+      console.warn('⚠️ Socket.IO instance not available');
     }
 
     res.status(201).json({ message });

@@ -51,6 +51,7 @@ export default function ChatThread({ threadId, currentUserId, onClose }) {
         ]);
         setThread(threadData);
         setMessages(messages);
+        console.log(`🔵 Joining thread ${threadId}...`);
         joinThread(threadId);
       } catch (err) {
         notifyError('Failed to load chat');
@@ -63,12 +64,14 @@ export default function ChatThread({ threadId, currentUserId, onClose }) {
     loadThread();
 
     return () => {
+      console.log(`🔴 Leaving thread ${threadId}...`);
       leaveThread(threadId);
     };
   }, [threadId]);
 
   // Listen for new messages
   const handleNewMessage = useCallback((message) => {
+    console.log('✉️ Received message:new event', message);
     setMessages((prev) => {
       if (prev.some((existing) => existing.id === message.id)) {
         return prev;
@@ -105,18 +108,20 @@ export default function ChatThread({ threadId, currentUserId, onClose }) {
   }, []);
 
   useEffect(() => {
+    console.log(`👂 Registering socket listeners for thread ${threadId}`);
     onMessageNew(handleNewMessage);
     onMessageRead(handleMessageRead);
     onUserTyping(handleUserTyping);
     onUserStoppedTyping(handleUserStoppedTyping);
 
     return () => {
+      console.log(`🔊 Removing socket listeners for thread ${threadId}`);
       removeListener('message:new', handleNewMessage);
       removeListener('message:marked-read', handleMessageRead);
       removeListener('typing:user-typing', handleUserTyping);
       removeListener('typing:user-stopped', handleUserStoppedTyping);
     };
-  }, [handleNewMessage, handleMessageRead, handleUserTyping, handleUserStoppedTyping]);
+  }, [handleNewMessage, handleMessageRead, handleUserTyping, handleUserStoppedTyping, threadId]);
 
   // Handle typing indicator
   const handleInputChange = (e) => {

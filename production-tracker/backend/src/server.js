@@ -62,6 +62,7 @@ io.on('connection', (socket) => {
     const { threadId } = data;
     const roomName = `thread:${threadId}`;
     socket.join(roomName);
+    console.log(`User ${socket.userId} joined thread ${threadId} (room: ${roomName}, socket rooms: ${JSON.stringify(Array.from(socket.rooms))})`);
     socket.to(roomName).emit('user:joined', {
       userId: socket.userId,
       timestamp: new Date(),
@@ -72,6 +73,7 @@ io.on('connection', (socket) => {
   socket.on('thread:leave', (data) => {
     const { threadId } = data;
     const roomName = `thread:${threadId}`;
+    console.log(`User ${socket.userId} left thread ${threadId}`);
     socket.to(roomName).emit('user:left', {
       userId: socket.userId,
       timestamp: new Date(),
