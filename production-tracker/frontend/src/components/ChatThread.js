@@ -244,11 +244,11 @@ export default function ChatThread({ threadId, currentUserId, onClose }) {
 
         {/* Typing indicator */}
         {typingUsers.size > 0 && (
-          <div className="bg-gary-200">
+          <div className="bg-gray-200 px-3 py-1 rounded-full w-max mx-auto flex items-center gap-1">
 
-            <div className="h-4 w-4 bg-black rounded-full animate-bounce [animation-delay:0.3s]"></div>
-            <div className="h-4 w-4 bg-black rounded-full animate-bounce [animation-delay:0.1s]"></div>
-            <div className="h-4 w-4 bg-black rounded-full animate-bounce "></div>
+            <div className="h-1 w-1 bg-black rounded-full animate-bounce [animation-delay:0.3s]"></div>
+            <div className="h-1 w-1 bg-black rounded-full animate-bounce [animation-delay:0.1s]"></div>
+            <div className="h-1 w-1 bg-black rounded-full animate-bounce "></div>
           </div>
         )}
 
