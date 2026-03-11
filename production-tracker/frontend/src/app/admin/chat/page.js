@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import authService from '@/lib/auth';
 import { MessageCirclePlus } from 'lucide-react';
@@ -10,7 +10,7 @@ import ChatThreadList from '@/components/ChatThreadList';
 import ChatThread from '@/components/ChatThread';
 import { initSocket, disconnectSocket } from '@/lib/socket';
 
-export default function AdminChatPage() {
+function AdminChatPageContent() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
@@ -111,5 +111,13 @@ export default function AdminChatPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function AdminChatPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
+      <AdminChatPageContent />
+    </Suspense>
   );
 }
