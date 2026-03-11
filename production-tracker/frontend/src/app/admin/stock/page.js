@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import authService from '@/lib/auth';
-import { Factory, Cpu, PackageCheck ,PackageX, Container,MessageSquareShare,Bolt,Boxes, Ticket , DiamondPlus,SquarePen, Cog} from 'lucide-react';
+import { Factory, Cpu, PackageCheck ,PackageX, Container,MessageSquareShare,Bolt,Boxes, Ticket , DiamondPlus,SquarePen, Cog,BookmarkX} from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import AppDropdown from '@/components/AppDropdown';
@@ -549,7 +549,7 @@ export default function AdminStockPage() {
               {/* Reservations List */}
               {reservations.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-16 text-center">
-                  <div className="text-4xl sm:text-6xl mb-3 sm:mb-4">🔖</div>
+                  <div className="text-4xl sm:text-6xl mb-3 sm:mb-4"><BookmarkX className="w-16 h-16 mx-auto" /></div>
                   <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No Reservations Yet</h3>
                   <p className="text-xs sm:text-sm text-gray-500">Workers can reserve stock for their work orders</p>
                 </div>
