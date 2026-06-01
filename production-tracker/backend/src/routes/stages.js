@@ -22,6 +22,7 @@ const STAGE_ORDER = [
 ];
 
 const FINAL_STAGE_STATUSES = ['COMPLETED', 'SKIPPED'];
+const MAX_STAGE_NOTE_LENGTH = 5000;
 
 function getPreviousSubRoles(subRole) {
   const currentIndex = STAGE_ORDER.indexOf(subRole);
@@ -47,6 +48,16 @@ function getBlockingStageFor(subRole, stagesBySubRole) {
   }
 
   return null;
+}
+
+function canAccessStage(user, stage) {
+  if (user.role === 'ADMIN') return true;
+  return stage.assignedToId === user.id;
+}
+
+function canUpdateNote(user, note) {
+  if (user.role === 'ADMIN') return true;
+  return note.authorId === user.id;
 }
 
 /**
@@ -160,6 +171,274 @@ router.get('/my-completed', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+/**
+ * GET /api/stages/:id/notes
+ * Get stage note history for a stage
+ */
+router.get('/:id/notes', authenticateToken, async (req, res) => {
+  try {
+    const stageId = parseInt(req.params.id);
+    if (isNaN(stageId)) {
+      return res.status(400).json({ error: 'Invalid stage ID' });
+    }
+
+    const stage = await prisma.workOrderStage.findUnique({
+      where: { id: stageId },
+      select: {
+        id: true,
+        assignedToId: true,
+      },
+    });
+
+    if (!stage) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+
+    if (!canAccessStage(req.user, stage)) {
+      return res.status(403).json({
+        error: 'You are not authorized to view notes for this stage',
+      });
+    }
+
+    const notes = await prisma.workOrderStageNote.findMany({
+      where: { stageId },
+      include: {
+        author: {
+          select: { id: true, username: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({ notes });
+  } catch (error) {
+    console.error('Get stage notes error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/stages/:id/notes
+ * Save a new note entry for a stage without changing status
+ */
+router.post('/:id/notes', authenticateToken, async (req, res) => {
+  try {
+    const stageId = parseInt(req.params.id);
+    if (isNaN(stageId)) {
+      return res.status(400).json({ error: 'Invalid stage ID' });
+    }
+
+    if (typeof req.body?.content !== 'string') {
+      return res.status(400).json({ error: 'Note content must be a string' });
+    }
+
+    const content = req.body.content.trim();
+
+    if (!content) {
+      return res.status(400).json({ error: 'Note content is required' });
+    }
+
+    if (content.length > MAX_STAGE_NOTE_LENGTH) {
+      return res.status(400).json({
+        error: `Note content must be ${MAX_STAGE_NOTE_LENGTH} characters or less`,
+      });
+    }
+
+    const stage = await prisma.workOrderStage.findUnique({
+      where: { id: stageId },
+      select: {
+        id: true,
+        assignedToId: true,
+      },
+    });
+
+    if (!stage) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+
+    if (!canAccessStage(req.user, stage)) {
+      return res.status(403).json({
+        error: 'You are not authorized to save notes for this stage',
+      });
+    }
+
+    const note = await prisma.$transaction(async (tx) => {
+      const createdNote = await tx.workOrderStageNote.create({
+        data: {
+          stageId,
+          authorId: req.user.id,
+          content,
+        },
+        include: {
+          author: {
+            select: { id: true, username: true },
+          },
+        },
+      });
+
+      await tx.workOrderStage.update({
+        where: { id: stageId },
+        data: { notes: content },
+      });
+
+      return createdNote;
+    });
+
+    return res.status(201).json({
+      message: 'Note saved successfully',
+      note,
+    });
+  } catch (error) {
+    console.error('Create stage note error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/stages/:id/notes/:noteId
+ * Update an existing note
+ */
+router.put('/:id/notes/:noteId', authenticateToken, async (req, res) => {
+  try {
+    const stageId = parseInt(req.params.id);
+    const noteId = parseInt(req.params.noteId);
+
+    if (isNaN(stageId) || isNaN(noteId)) {
+      return res.status(400).json({ error: 'Invalid stage ID or note ID' });
+    }
+
+    if (typeof req.body?.content !== 'string') {
+      return res.status(400).json({ error: 'Note content must be a string' });
+    }
+
+    const content = req.body.content.trim();
+
+    if (!content) {
+      return res.status(400).json({ error: 'Note content is required' });
+    }
+
+    if (content.length > MAX_STAGE_NOTE_LENGTH) {
+      return res.status(400).json({
+        error: `Note content must be ${MAX_STAGE_NOTE_LENGTH} characters or less`,
+      });
+    }
+
+    // Get the note to check authorization
+    const note = await prisma.workOrderStageNote.findUnique({
+      where: { id: noteId },
+      include: {
+        stage: {
+          select: { id: true, assignedToId: true },
+        },
+        author: {
+          select: { id: true, username: true },
+        },
+      },
+    });
+
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    if (note.stageId !== stageId) {
+      return res.status(400).json({ error: 'Note does not belong to this stage' });
+    }
+
+    if (!canUpdateNote(req.user, note)) {
+      return res.status(403).json({
+        error: 'You are not authorized to update this note',
+      });
+    }
+
+    // Update the note
+    const updatedNote = await prisma.workOrderStageNote.update({
+      where: { id: noteId },
+      data: { content },
+      include: {
+        author: {
+          select: { id: true, username: true },
+        },
+      },
+    });
+
+    return res.json({
+      message: 'Note updated successfully',
+      note: updatedNote,
+    });
+  } catch (error) {
+    console.error('Update stage note error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * DELETE /api/stages/:id/notes/:noteId
+ * Delete a note
+ */
+router.delete('/:id/notes/:noteId', authenticateToken, async (req, res) => {
+  try {
+    const stageId = parseInt(req.params.id);
+    const noteId = parseInt(req.params.noteId);
+
+    if (isNaN(stageId) || isNaN(noteId)) {
+      return res.status(400).json({ error: 'Invalid stage ID or note ID' });
+    }
+
+    // Get the note to check authorization
+    const note = await prisma.workOrderStageNote.findUnique({
+      where: { id: noteId },
+      select: {
+        id: true,
+        stageId: true,
+        authorId: true,
+      },
+    });
+
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    if (note.stageId !== stageId) {
+      return res.status(400).json({ error: 'Note does not belong to this stage' });
+    }
+
+    if (!canUpdateNote(req.user, note)) {
+      return res.status(403).json({
+        error: 'You are not authorized to delete this note',
+      });
+    }
+
+    // Delete the note in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete the note
+      await tx.workOrderStageNote.delete({
+        where: { id: noteId },
+      });
+
+      // Update stage.notes to the latest remaining note (if any)
+      const latestNote = await tx.workOrderStageNote.findFirst({
+        where: { stageId },
+        orderBy: { createdAt: 'desc' },
+        select: { content: true },
+      });
+
+      await tx.workOrderStage.update({
+        where: { id: stageId },
+        data: { notes: latestNote?.content || null },
+      });
+    });
+
+    return res.json({
+      message: 'Note deleted successfully',
+      noteId,
+    });
+  } catch (error) {
+    console.error('Delete stage note error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 /**
  * PUT /api/stages/:id
  * Worker updates their stage status
@@ -172,11 +451,22 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const { status, notes, assignedToId } = req.body;
+    const normalizedNotes = typeof notes === 'string' ? notes.trim() : notes;
 
     // Validate status
     const validStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED'];
     if (status && !validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    if (notes !== undefined && typeof notes !== 'string') {
+      return res.status(400).json({ error: 'Notes must be a string' });
+    }
+
+    if (typeof normalizedNotes === 'string' && normalizedNotes.length > MAX_STAGE_NOTE_LENGTH) {
+      return res.status(400).json({
+        error: `Notes must be ${MAX_STAGE_NOTE_LENGTH} characters or less`,
+      });
     }
 
     // Get the stage FIRST (before validation)
@@ -190,12 +480,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     // Workers can only update stages explicitly assigned to them (unless admin)
-    if (req.user.role !== 'ADMIN') {
-      if (stage.assignedToId !== req.user.id) {
-        return res.status(403).json({
-          error: 'You are not authorized to update this stage',
-        });
-      }
+    if (!canAccessStage(req.user, stage)) {
+      return res.status(403).json({
+        error: 'You are not authorized to update this stage',
+      });
     }
 
     // Validate assignedToId if provided
@@ -252,8 +540,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Build update data
     const updateData = {
-      notes: notes !== undefined ? notes : stage.notes,
+      notes: notes !== undefined ? normalizedNotes : stage.notes,
     };
+
+    const shouldCreateNoteHistory = typeof normalizedNotes === 'string' && normalizedNotes.length > 0;
 
     // Update status if provided
     if (status) {
@@ -290,13 +580,27 @@ router.put('/:id', authenticateToken, async (req, res) => {
       // updateData.assignedToId = null;
     }
     // Update the stage
-    const updatedStage = await prisma.workOrderStage.update({
-      where: { id: stageId },
-      data: updateData,
-      include: {
-        assignedTo: { select: { id: true, username: true } },
-        workOrder: { select: { id: true, workOrderNumber: true } },
-      },
+    const updatedStage = await prisma.$transaction(async (tx) => {
+      const stageResult = await tx.workOrderStage.update({
+        where: { id: stageId },
+        data: updateData,
+        include: {
+          assignedTo: { select: { id: true, username: true } },
+          workOrder: { select: { id: true, workOrderNumber: true } },
+        },
+      });
+
+      if (shouldCreateNoteHistory) {
+        await tx.workOrderStageNote.create({
+          data: {
+            stageId,
+            authorId: req.user.id,
+            content: normalizedNotes,
+          },
+        });
+      }
+
+      return stageResult;
     });
 
     // Update work order status based on all stages

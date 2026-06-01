@@ -1,0 +1,157 @@
+\documentclass[12pt,a4paper]{report}
+
+% ==================== PACKAGES ====================
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tocloft}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{rotating}
+
+% ==================== PAGE LAYOUT ====================
+\geometry{
+    left=3cm,
+    right=2.5cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+% ==================== HEADER & FOOTER ====================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+% ==================== CHAPTER & SECTION FORMATTING ====================
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-20pt}{40pt}
+
+% ==================== HYPERREF SETTINGS ====================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+    pdftitle={PFE REPORT},
+    pdfauthor={Hamza Znaidi},
+}
+
+% ==================== CODE LISTING SETTINGS ====================
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    tabsize=2
+}
+
+% ==================== TABLE OF CONTENTS SETTINGS ====================
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+% ==================== CUSTOM COMMANDS ====================
+\newcommand{\institutionname}{Faculty of Sciences of Monastir}
+\newcommand{\projecttitle}{KTS Production Tracking System}
+\newcommand{\studentname}{Hamza Znaidi}
+\newcommand{\supervisoracademic}{Mr. Souheyl Mallat}
+\newcommand{\supervisorcompany}{Mr. Mehrez Ayadi}
+
+% ==================== DOCUMENT BEGIN ====================
+\begin{document}
+
+% Set line spacing
+\onehalfspacing
+
+% ==================== FRONT MATTER ====================
+\pagenumbering{roman}
+
+% Title Page
+\input{chapters/00-titlepage}
+
+% Validation Page
+\input{chapters/01-validation}
+
+% Dedication
+\input{chapters/02-dedication}
+
+% Acknowledgments
+\input{chapters/03-acknowledgments}
+
+% Table of Contents
+\tableofcontents
+\newpage
+
+% List of Figures
+\listoffigures
+\newpage
+
+% List of Tables
+\listoftables
+\newpage
+
+% List of Abbreviations
+\input{chapters/04-abbreviations}
+\newpage
+
+% ==================== MAIN CONTENT ====================
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% Introduction
+\input{chapters/05-introduction}
+
+% Chapter 1: Context and Objectives
+\input{chapters/06-chapter1}
+
+% Chapter 2: Analysis and Technical Specifications
+\input{chapters/07-chapter2}
+
+% Chapter 3: System Design
+\input{chapters/08-chapter3}
+
+% Chapter 4: Implementation
+\input{chapters/09-chapter4}
+
+% Conclusion
+\input{chapters/11-conclusion}
+
+% References
+\newpage
+\input{chapters/12-references}
+
+% ==================== BIBLIOGRAPHY ====================
+\bibliographystyle{plain}
+%\bibliography{references}
+
+% ==================== APPENDICES ====================
+\appendix
+
+
+\end{document}

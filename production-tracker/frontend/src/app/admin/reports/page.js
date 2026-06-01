@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { jsPDF } from 'jspdf';
 import authService from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
@@ -16,6 +17,14 @@ import {
   Users,
   Boxes,
   Building2,
+  Sparkles,
+  Loader2,
+  FileText,
+  FileDown,
+  Lightbulb,
+  ShieldAlert,
+  Trophy,
+  TrendingUp,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -90,6 +99,11 @@ const shortenLabel = (value) => {
 export default function AdminReportsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [aiReport, setAiReport] = useState(null);
+  const [reportError, setReportError] = useState('');
+  const [reportStartDate, setReportStartDate] = useState('');
+  const [reportEndDate, setReportEndDate] = useState('');
   const [stats, setStats] = useState({
     totalWorkOrders: 0,
     completedWorkOrders: 0,
@@ -124,6 +138,17 @@ export default function AdminReportsPage() {
 
     fetchReportData();
   }, [router]);
+
+  useEffect(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+
+    const toInputDate = (date) => date.toISOString().slice(0, 10);
+
+    setReportStartDate(toInputDate(startDate));
+    setReportEndDate(toInputDate(endDate));
+  }, []);
 
   const fetchReportData = async () => {
     try {
@@ -175,6 +200,262 @@ export default function AdminReportsPage() {
   const handleLogout = () => {
     authService.logout();
     router.push('/');
+  };
+
+  const resolveWorkerName = (worker) => worker?.username || worker?.name || worker?.worker || 'Unknown';
+
+  const buildPdf = () => {
+    if (!aiReport) return;
+
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 40;
+    const contentWidth = pageWidth - margin * 2;
+    const lineHeight = 16;
+    const headerHeight = 108;
+    const sectionGap = 18;
+    let cursorY = headerHeight + 28;
+
+    const reportTitle = 'Production Insights Report';
+    const generatedAtText = `Generated: ${new Date(aiReport.generatedAt).toLocaleString()}`;
+    const rangeText = `Range: ${reportStartDate || 'N/A'} to ${reportEndDate || 'N/A'}`;
+
+    const palette = {
+      indigo: [79, 70, 229],
+      indigoDark: [49, 46, 129],
+      sky: [14, 165, 233],
+      emerald: [16, 185, 129],
+      amber: [245, 158, 11],
+      rose: [244, 63, 94],
+      slate: [15, 23, 42],
+      soft: [248, 250, 252],
+      border: [226, 232, 240],
+      text: [15, 23, 42],
+      muted: [100, 116, 139],
+    };
+
+    const setFill = (color) => pdf.setFillColor(color[0], color[1], color[2]);
+    const setStroke = (color) => pdf.setDrawColor(color[0], color[1], color[2]);
+
+    const addFooter = () => {
+      const pageCount = pdf.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        pdf.setPage(page);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(...palette.muted);
+        pdf.text(`Page ${page} of ${pageCount}`, margin, pageHeight - 24);
+        pdf.text('KTS Production Tracker', pageWidth - margin - 120, pageHeight - 24);
+      }
+    };
+
+    const drawHeader = () => {
+      setFill(palette.indigo);
+      pdf.rect(0, 0, pageWidth, headerHeight, 'F');
+      setFill(palette.sky);
+      pdf.circle(pageWidth - 70, 30, 26, 'F');
+      setFill([255, 255, 255]);
+      pdf.circle(pageWidth - 35, 76, 14, 'F');
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(22);
+      pdf.text(reportTitle, margin, 38);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(generatedAtText, margin, 58);
+      pdf.text(rangeText, margin, 74);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('AI-powered production analysis', margin, 92);
+      pdf.setTextColor(...palette.text);
+    };
+
+    const newPage = () => {
+      pdf.addPage();
+      cursorY = headerHeight + 28;
+      drawHeader();
+    };
+
+    const ensureSpace = (needed = 20) => {
+      if (cursorY + needed > pageHeight - 44) {
+        newPage();
+      }
+    };
+
+    const writeTitle = (text, size = 18, accent = palette.indigo) => {
+      const blockHeight = size + 18;
+      ensureSpace(blockHeight);
+      setFill([255, 255, 255]);
+      setStroke(accent);
+      pdf.roundedRect(margin, cursorY - 6, contentWidth, blockHeight, 8, 8, 'FD');
+      setFill(accent);
+      pdf.roundedRect(margin, cursorY - 6, 8, blockHeight, 8, 8, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(size);
+      pdf.setTextColor(...palette.text);
+      pdf.text(text, margin + 18, cursorY + size - 2);
+      cursorY += blockHeight + 10;
+    };
+
+    const writeParagraph = (text, options = {}) => {
+      const fontSize = options.fontSize || 11;
+      const style = options.bold ? 'bold' : 'normal';
+      pdf.setFont('helvetica', style);
+      pdf.setFontSize(fontSize);
+      const lines = pdf.splitTextToSize(String(text || ''), contentWidth);
+      ensureSpace(lines.length * lineHeight + 10);
+      pdf.text(lines, margin, cursorY);
+      cursorY += lines.length * lineHeight + 4;
+    };
+
+    const writeBullet = (text, color = palette.indigo) => {
+      const lines = pdf.splitTextToSize(String(text || ''), contentWidth - 16);
+      ensureSpace(lines.length * lineHeight + 10);
+      setFill(color);
+      pdf.circle(margin + 4, cursorY + 4, 2.5, 'F');
+      pdf.setTextColor(...palette.text);
+      pdf.text(lines, margin + 14, cursorY + 8);
+      cursorY += lines.length * lineHeight + 4;
+    };
+
+    const writeCard = (x, y, width, height, label, value, accent) => {
+      setFill([255, 255, 255]);
+      setStroke(palette.border);
+      pdf.roundedRect(x, y, width, height, 10, 10, 'FD');
+      setFill(accent);
+      pdf.roundedRect(x, y, 6, height, 10, 10, 'F');
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.setTextColor(...palette.muted);
+      pdf.text(label, x + 14, y + 20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(20);
+      pdf.setTextColor(...palette.text);
+      pdf.text(String(value), x + 14, y + 46);
+    };
+
+    drawHeader();
+
+    const cardWidth = (contentWidth - 12) / 2;
+    const cardHeight = 66;
+    const cardY = cursorY;
+    writeCard(margin, cardY, cardWidth, cardHeight, 'Total Notes', aiReport.stats?.totalNotes ?? 0, palette.indigo);
+    writeCard(margin + cardWidth + 12, cardY, cardWidth, cardHeight, 'Workers', aiReport.stats?.totalWorkers ?? 0, palette.emerald);
+    cursorY += cardHeight + sectionGap;
+
+    const writeMetricStrip = () => {
+      ensureSpace(72);
+      const stripY = cursorY;
+      setFill([245, 247, 255]);
+      setStroke([226, 232, 240]);
+      pdf.roundedRect(margin, stripY, contentWidth, 64, 10, 10, 'FD');
+
+      const metrics = [
+        { label: 'Completed Stages', value: aiReport.stats?.completedStages ?? 0, accent: palette.emerald },
+        { label: 'Active Stages', value: aiReport.stats?.activeStages ?? 0, accent: palette.sky },
+        { label: 'Insights', value: (aiReport.insights || []).length, accent: palette.amber },
+        { label: 'Issues', value: (aiReport.qualityIssues || []).length, accent: palette.rose },
+      ];
+
+      const metricWidth = contentWidth / 4;
+      metrics.forEach((metric, index) => {
+        const x = margin + index * metricWidth;
+        setFill(metric.accent);
+        pdf.circle(x + 16, stripY + 20, 7, 'F');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(...palette.text);
+        pdf.text(String(metric.value), x + 30, stripY + 18);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(...palette.muted);
+        pdf.text(metric.label, x + 30, stripY + 34);
+      });
+
+      cursorY += 84;
+    };
+
+    writeMetricStrip();
+
+    writeTitle('Executive Summary', 15, palette.indigo);
+    setFill([248, 250, 252]);
+    setStroke(palette.border);
+    pdf.roundedRect(margin, cursorY - 4, contentWidth, 72, 10, 10, 'FD');
+    writeParagraph(aiReport.summary || 'No summary available.', { fontSize: 11 });
+    cursorY += 8;
+
+    writeTitle('Key Insights', 15, palette.amber);
+    (aiReport.insights || []).forEach((item) => writeBullet(item, palette.amber));
+
+    writeTitle('Recommendations', 15, palette.emerald);
+    (aiReport.recommendations || []).forEach((item) => writeBullet(item, palette.emerald));
+
+    writeTitle('Quality Issues From Notes', 15, palette.rose);
+    (aiReport.qualityIssues || []).forEach((item, index) => {
+      if (typeof item === 'string') {
+        writeBullet(item, palette.rose);
+        return;
+      }
+
+      ensureSpace(54);
+      setFill([255, 247, 248]);
+      setStroke([251, 191, 207]);
+      pdf.roundedRect(margin, cursorY - 4, contentWidth, 44, 8, 8, 'FD');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(...palette.text);
+      pdf.text(`${item.workOrderNumber || 'Unknown'} · ${item.stage || 'Unknown stage'} · ${item.worker || 'Unknown worker'}`, margin + 12, cursorY + 10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.setTextColor(...palette.muted);
+      pdf.text(pdf.splitTextToSize(item.content || item.description || '', contentWidth - 24), margin + 12, cursorY + 26);
+      cursorY += 52;
+    });
+
+    writeTitle('Worker Performance', 15, palette.sky);
+    (aiReport.workerPerformance || []).slice(0, 10).forEach((worker, index) => {
+      const name = resolveWorkerName(worker);
+      ensureSpace(42);
+      const rowHeight = 34;
+      setFill(index % 2 === 0 ? [248, 250, 252] : [255, 255, 255]);
+      setStroke(palette.border);
+      pdf.roundedRect(margin, cursorY - 2, contentWidth, rowHeight, 8, 8, 'FD');
+      setFill(worker.efficiencyScore >= 70 ? palette.emerald : worker.efficiencyScore >= 40 ? palette.amber : palette.rose);
+      pdf.circle(margin + 10, cursorY + 14, 5, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(...palette.text);
+      pdf.text(`#${index + 1} ${name}`, margin + 24, cursorY + 12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(...palette.muted);
+      pdf.text(`Score ${worker.efficiencyScore ?? worker.score ?? 0}  |  Completed ${worker.completedStages ?? 0}  |  Assigned ${worker.assignedStages ?? 0}  |  Notes ${worker.notesAuthored ?? 0}`, margin + 24, cursorY + 24);
+      cursorY += rowHeight + 8;
+    });
+
+    addFooter();
+    pdf.save(`AI_Report_${new Date(aiReport.generatedAt).toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setIsGeneratingReport(true);
+      setReportError('');
+
+      const payload = reportStartDate && reportEndDate
+        ? { startDate: reportStartDate, endDate: reportEndDate }
+        : { days: 7 };
+
+      const response = await api.post('/reports/generate', payload);
+      setAiReport(response.data.report);
+    } catch (error) {
+      const message = error.response?.data?.error || 'Failed to generate AI report';
+      setReportError(message);
+      notifyError(message);
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   const chartData = useMemo(() => {
@@ -287,11 +568,182 @@ export default function AdminReportsPage() {
                 Snapshot overview for production, stock, and team activity.
               </p>
             </div>
-            <NotificationBell role="ADMIN" />
+            <div className="flex flex-col items-end gap-3">
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
+                  Start Date
+                  <input
+                    type="date"
+                    value={reportStartDate}
+                    onChange={(event) => setReportStartDate(event.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-indigo-500"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
+                  End Date
+                  <input
+                    type="date"
+                    value={reportEndDate}
+                    onChange={(event) => setReportEndDate(event.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-indigo-500"
+                  />
+                </label>
+              </div>
+              <button
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGeneratingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <span>{isGeneratingReport ? 'Generating...' : 'Generate AI Report'}</span>
+              </button>
+              <NotificationBell role="ADMIN" />
+            </div>
           </div>
         </header>
 
         <main className="p-4 sm:p-8 space-y-6 modern-enter">
+          {reportError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {reportError}
+            </div>
+          )}
+
+          {aiReport && (
+            <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Report
+                  </p>
+                  <h2 className="mt-1 text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-indigo-600" />
+                    Production Insights
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Generated {new Date(aiReport.generatedAt).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={buildPdf}
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                >
+                  <FileDown className="h-4 w-4" />
+                  Export PDF
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-indigo-600" />
+                    Executive Summary
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-700 whitespace-pre-wrap">
+                    {aiReport.summary || 'No summary returned by the AI model.'}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <BadgeCheck className="h-4 w-4 text-green-600" />
+                    Key Stats
+                  </h3>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-gray-500 flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-gray-400" />Total Notes</p>
+                      <p className="mt-1 font-bold text-gray-900">{aiReport.stats?.totalNotes ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-gray-500 flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-green-500" />Completed Stages</p>
+                      <p className="mt-1 font-bold text-gray-900">{aiReport.stats?.completedStages ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-gray-500 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5 text-blue-500" />Active Stages</p>
+                      <p className="mt-1 font-bold text-gray-900">{aiReport.stats?.activeStages ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-gray-500 flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-violet-500" />Workers</p>
+                      <p className="mt-1 font-bold text-gray-900">{aiReport.stats?.totalWorkers ?? 0}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-amber-500" />
+                    Insights
+                  </h3>
+                  <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                    {(aiReport.insights || []).slice(0, 5).map((item, index) => (
+                      <li key={`${item}-${index}`} className="rounded-lg bg-white px-3 py-2">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-emerald-500" />
+                    Recommendations
+                  </h3>
+                  <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                    {(aiReport.recommendations || []).slice(0, 5).map((item, index) => (
+                      <li key={`${item}-${index}`} className="rounded-lg bg-white px-3 py-2">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-red-500" />
+                    Quality Issues From Notes
+                  </h3>
+                  <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                    {(aiReport.qualityIssues || []).slice(0, 6).map((item, index) => (
+                      <li key={item.id || `${item}-${index}`} className="rounded-lg bg-white px-3 py-2">
+                        {typeof item === 'string' ? (
+                          <p className="text-gray-700">{item}</p>
+                        ) : (
+                          <>
+                            <span className="font-medium text-gray-900">{item.workOrderNumber || 'Unknown work order'}</span>
+                            {' '}
+                            <span className="text-gray-500">({item.stage || 'Unknown stage'} - {item.worker || 'Unknown worker'})</span>
+                            <p className="mt-1 text-gray-700">{item.content || item.description || ''}</p>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-indigo-600" />
+                    Worker Performance
+                  </h3>
+                  <div className="mt-3 space-y-2">
+                    {(aiReport.workerPerformance || []).slice(0, 5).map((worker, index) => (
+                      <div key={worker.userId || worker.username || worker.name || index} className="rounded-lg bg-white px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-gray-900">#{index + 1} {resolveWorkerName(worker)}</span>
+                          <span className="text-indigo-600 font-semibold">{worker.efficiencyScore ?? worker.score ?? 0}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Completed: {worker.completedStages ?? 0} | Assigned: {worker.assignedStages ?? 0} | Notes: {worker.notesAuthored ?? 0}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 modern-hover">
               <div className="flex items-center justify-between">

@@ -11,6 +11,7 @@ const stageRoutes = require('./routes/stages');
 const stockRoutes = require('./routes/stock');
 const notificationRoutes = require('./routes/notifications');
 const chatRoutes = require('./routes/chat');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 app.set('trust proxy', true);
@@ -35,6 +36,7 @@ app.use('/api/stages', stageRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Socket.IO middleware for authentication
 io.use((socket, next) => {
@@ -149,7 +151,7 @@ app.use((err, req, res, next) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
-  console.log(`💬 WebSocket ready for realtime chat`);
+  console.log(` Server running on http://localhost:${PORT}`);
+  console.log(` API available at http://localhost:${PORT}/api`);
+  console.log(` WebSocket ready for realtime chat`);
 });

@@ -11,6 +11,7 @@ import { notifyError, notifySuccess } from '@/lib/toast';
 import {
   Pause,
   Zap,
+  Save,
   CircleCheckBig,
   SkipForward,
   CircleX,
@@ -29,6 +30,9 @@ import {
   UserRound,
   StickyNote,
   Ban,
+  Edit,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -95,6 +99,16 @@ export default function WorkerTaskDetailsPage() {
   const [currentStageId, setCurrentStageId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingStage, setUpdatingStage] = useState(null);
+  const [stageNotes, setStageNotes] = useState([]);
+  const [isLoadingStageNotes, setIsLoadingStageNotes] = useState(false);
+  const [savingNoteStageId, setSavingNoteStageId] = useState(null);
+  const [stageNoteDrafts, setStageNoteDrafts] = useState({});
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [savingEditNoteId, setSavingEditNoteId] = useState(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deleteConfirmNoteId, setDeleteConfirmNoteId] = useState(null);
+  const [deletingNoteId, setDeletingNoteId] = useState(null);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -135,11 +149,30 @@ export default function WorkerTaskDetailsPage() {
       const workOrderResponse = await api.get(`/workorders/${selectedTask.workOrder.id}`);
       setWorkOrder(workOrderResponse.data.workOrder);
       setCurrentStageId(selectedStageId);
+      await fetchStageNotes(selectedStageId);
     } catch (fetchError) {
       notifyError('Failed to load work order details');
       setWorkOrder(null);
+      setStageNotes([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchStageNotes = async (selectedStageId) => {
+    if (!selectedStageId) {
+      setStageNotes([]);
+      return;
+    }
+
+    setIsLoadingStageNotes(true);
+    try {
+      const response = await api.get(`/stages/${selectedStageId}/notes`);
+      setStageNotes(response.data.notes || []);
+    } catch (error) {
+      setStageNotes([]);
+    } finally {
+      setIsLoadingStageNotes(false);
     }
   };
 
@@ -197,6 +230,124 @@ export default function WorkerTaskDetailsPage() {
       notifyError(error.response?.data?.error || 'Failed to update task');
     } finally {
       setUpdatingStage(null);
+    }
+  };
+
+  const handleStageNoteDraftChange = (stageId, value) => {
+    setStageNoteDrafts((previous) => ({
+      ...previous,
+      [stageId]: value,
+    }));
+  };
+
+  const handleSaveStageNote = async (stage) => {
+    const noteDraft = (stageNoteDrafts[stage.id] || '').trim();
+    if (!noteDraft) {
+      notifyError('Please write a note before saving');
+      return;
+    }
+
+    setSavingNoteStageId(stage.id);
+    try {
+      const response = await api.post(`/stages/${stage.id}/notes`, { content: noteDraft });
+      const createdNote = response.data.note;
+
+      if (createdNote) {
+        setStageNotes((previous) => [createdNote, ...previous]);
+      }
+
+      setWorkOrder((previous) => {
+        if (!previous) return previous;
+
+        return {
+          ...previous,
+          stages: previous.stages.map((entry) =>
+            entry.id === stage.id
+              ? {
+                  ...entry,
+                  notes: noteDraft,
+                }
+              : entry
+          ),
+        };
+      });
+
+      setStageNoteDrafts((previous) => ({
+        ...previous,
+        [stage.id]: '',
+      }));
+
+      notifySuccess('Note saved');
+    } catch (error) {
+      notifyError(error.response?.data?.error || 'Failed to save note');
+    } finally {
+      setSavingNoteStageId(null);
+    }
+  };
+
+  const handleEditNote = (noteId, currentContent) => {
+    setEditingNoteId(noteId);
+    setEditContent(currentContent);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNoteId(null);
+    setEditContent('');
+  };
+
+  const handleSaveEditedNote = async (stageId) => {
+    if (!editContent.trim()) {
+      notifyError('Note content cannot be empty');
+      return;
+    }
+
+    if (editContent.length > 5000) {
+      notifyError('Note content must be 5000 characters or less');
+      return;
+    }
+
+    setSavingEditNoteId(editingNoteId);
+    try {
+      const response = await api.put(`/stages/${stageId}/notes/${editingNoteId}`, {
+        content: editContent,
+      });
+
+      const updatedNote = response.data.note;
+      setStageNotes((previous) =>
+        previous.map((note) =>
+          note.id === editingNoteId ? updatedNote : note
+        )
+      );
+
+      handleCancelEdit();
+      notifySuccess('Note updated successfully');
+    } catch (error) {
+      notifyError(error.response?.data?.error || 'Failed to update note');
+    } finally {
+      setSavingEditNoteId(null);
+    }
+  };
+
+  const handleDeleteNote = (noteId) => {
+    setDeleteConfirmNoteId(noteId);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleConfirmDelete = async (stageId, noteId) => {
+    setDeletingNoteId(noteId);
+    try {
+      await api.delete(`/stages/${stageId}/notes/${noteId}`);
+      setStageNotes((previous) =>
+        previous.filter((note) => note.id !== noteId)
+      );
+
+      setShowDeleteConfirmModal(false);
+      setDeleteConfirmNoteId(null);
+      notifySuccess('Note deleted successfully');
+    } catch (error) {
+      notifyError(error.response?.data?.error || 'Failed to delete note');
+    } finally {
+      setDeletingNoteId(null);
     }
   };
 
@@ -474,7 +625,7 @@ export default function WorkerTaskDetailsPage() {
                               {stage.notes && (
                                 <p className="text-xs text-gray-500 mt-1 italic inline-flex items-center gap-1">
                                   <StickyNote className="w-3.5 h-3.5" />
-                                  {stage.notes}
+                                  Latest note: {stage.notes}
                                 </p>
                               )}
 
@@ -509,24 +660,123 @@ export default function WorkerTaskDetailsPage() {
                               )}
 
                               {isCurrentTask && stage.status === 'IN_PROGRESS' && (
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  <button
-                                    onClick={() => handleUpdateTaskStatus(stage, 'COMPLETED')}
-                                    disabled={updatingStage === stage.id}
-                                    className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <CircleCheckBig className="w-4 h-4" />
-                                    <span>{updatingStage === stage.id ? 'Saving...' : 'Mark Complete'}</span>
-                                  </button>
+                                <div className="mt-3 space-y-3">
+                                  <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-2">
+                                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                                      Save Progress Note
+                                    </p>
+                                    <textarea
+                                      value={stageNoteDrafts[stage.id] || ''}
+                                      onChange={(event) => handleStageNoteDraftChange(stage.id, event.target.value)}
+                                      rows={3}
+                                      placeholder="Write what you did or what is blocking you..."
+                                      className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      onClick={() => handleSaveStageNote(stage)}
+                                      disabled={savingNoteStageId === stage.id}
+                                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <Save className="w-4 h-4" />
+                                      <span>{savingNoteStageId === stage.id ? 'Saving note...' : 'Save Notes'}</span>
+                                    </button>
+                                  </div>
 
-                                  <button
-                                    onClick={() => handleUpdateTaskStatus(stage, 'PENDING')}
-                                    disabled={updatingStage === stage.id}
-                                    className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <Undo2 className="w-4 h-4" />
-                                    <span>{updatingStage === stage.id ? 'Saving...' : 'Cancel Task'}</span>
-                                  </button>
+                                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                                      Saved Notes History
+                                    </p>
+                                    {isLoadingStageNotes ? (
+                                      <p className="text-sm text-gray-500">Loading notes...</p>
+                                    ) : stageNotes.length === 0 ? (
+                                      <p className="text-sm text-gray-500">No notes saved yet.</p>
+                                    ) : (
+                                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                        {stageNotes.map((noteEntry) => (
+                                          <div key={noteEntry.id}>
+                                            {editingNoteId === noteEntry.id ? (
+                                              <div className="rounded-md border border-blue-200 bg-blue-50 p-2 space-y-2">
+                                                <textarea
+                                                  value={editContent}
+                                                  onChange={(e) => setEditContent(e.target.value)}
+                                                  rows={2}
+                                                  placeholder="Edit note..."
+                                                  className="w-full rounded-lg border border-blue-300 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <div className="flex gap-2 justify-end">
+                                                  <button
+                                                    onClick={handleCancelEdit}
+                                                    className="inline-flex items-center gap-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded text-xs font-medium transition"
+                                                  >
+                                                    <X className="w-3 h-3" />
+                                                    Cancel
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleSaveEditedNote(stage.id)}
+                                                    disabled={savingEditNoteId === noteEntry.id}
+                                                    className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                                  >
+                                                    <Save className="w-3 h-3" />
+                                                    Save
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="rounded-md border border-gray-200 bg-gray-50 p-2">
+                                                <div className="flex justify-between items-start gap-2">
+                                                  <div className="flex-1">
+                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{noteEntry.content}</p>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                      {noteEntry.author?.username || 'Unknown'} - {new Date(noteEntry.createdAt).toLocaleString()}
+                                                      {noteEntry.updatedAt && new Date(noteEntry.updatedAt).getTime() !== new Date(noteEntry.createdAt).getTime() && (
+                                                        <span> (Edited: {new Date(noteEntry.updatedAt).toLocaleString()})</span>
+                                                      )}
+                                                    </p>
+                                                  </div>
+                                                  <div className="flex gap-1 flex-shrink-0">
+                                                    <button
+                                                      onClick={() => handleEditNote(noteEntry.id, noteEntry.content)}
+                                                      className="p-1 text-gray-600 hover:bg-gray-200 rounded transition"
+                                                      title="Edit note"
+                                                    >
+                                                      <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleDeleteNote(noteEntry.id)}
+                                                      className="p-1 text-red-600 hover:bg-red-100 rounded transition"
+                                                      title="Delete note"
+                                                    >
+                                                      <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(stage, 'COMPLETED')}
+                                      disabled={updatingStage === stage.id}
+                                      className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <CircleCheckBig className="w-4 h-4" />
+                                      <span>{updatingStage === stage.id ? 'Saving...' : 'Mark Complete'}</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(stage, 'PENDING')}
+                                      disabled={updatingStage === stage.id}
+                                      className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <Undo2 className="w-4 h-4" />
+                                      <span>{updatingStage === stage.id ? 'Saving...' : 'Cancel Task'}</span>
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -541,6 +791,48 @@ export default function WorkerTaskDetailsPage() {
           </div>
         </main>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full">
+            <div className="bg-red-50 px-6 py-4 border-b border-red-200">
+              <h3 className="text-lg font-bold text-red-900 flex items-center gap-2">
+                <Trash2 className="w-5 h-5" />
+                Delete Note?
+              </h3>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete this note? This action cannot be undone.
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirmModal(false);
+                  setDeleteConfirmNoteId(null);
+                }}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg text-sm font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (currentStageId && deleteConfirmNoteId) {
+                    handleConfirmDelete(currentStageId, deleteConfirmNoteId);
+                  }
+                }}
+                disabled={deletingNoteId === deleteConfirmNoteId}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{deletingNoteId === deleteConfirmNoteId ? 'Deleting...' : 'Delete'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

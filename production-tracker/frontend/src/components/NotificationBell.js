@@ -209,8 +209,8 @@ export default function NotificationBell({ role }) {
                       handleMarkAsRead(notification.id);
                     }
                   }}
-                  className={`w-full text-left px-3 py-3 border-b border-gray-100 hover:bg-gray-50 transition ${
-                    notification.isRead ? 'bg-white' : 'bg-indigo-50'
+                  className={`w-full text-left px-3 py-3 border-b border-gray-100 hover:bg-gray-50 transition dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-600 ${
+                    notification.isRead ? 'bg-white dark:bg-gray-800' : 'bg-indigo-50 dark:bg-gray-600'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">

@@ -1,0 +1,41 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Host organisation KTS logo \hyperref [ref:KTSlogo]{[3]}}}{2}{figure.caption.5}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces SMOFT official logo \hyperref [ref:SMOFT-LOGO]{[5]}}}{4}{figure.caption.7}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces SMOFT dashboard }}{5}{figure.caption.8}%
+\contentsline {figure}{\numberline {1.4}{\ignorespaces SAP Digital Manufacturing \hyperref [ref:SAPDM-LOGO]{[7]}}}{5}{figure.caption.9}%
+\contentsline {figure}{\numberline {1.5}{\ignorespaces SAP Digital Manufacturing dashboard \hyperref [ref:SAPDM-DASHBOARD]{[8]}}}{6}{figure.caption.10}%
+\contentsline {figure}{\numberline {1.6}{\ignorespaces SCRUM Process \hyperref [ref:scrum-Process]{[10]}}}{8}{figure.caption.12}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Use Case Diagram}}{15}{figure.caption.14}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Global class diagram}}{16}{figure.caption.15}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Sprint 1 Use Case Diagram}}{21}{figure.caption.17}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Authentication Sequence Diagram}}{22}{figure.caption.18}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Login Interface}}{23}{figure.caption.19}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces User Management Interface}}{23}{figure.caption.20}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces User Creation Modal}}{23}{figure.caption.20}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Sprint 2 Use Case Diagram}}{24}{figure.caption.21}%
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Work Order Progress Update Sequence Diagram}}{25}{figure.caption.22}%
+\contentsline {figure}{\numberline {3.8}{\ignorespaces Work Order Management Interface}}{26}{figure.caption.23}%
+\contentsline {figure}{\numberline {3.9}{\ignorespaces Production Stages Admin View}}{26}{figure.caption.24}%
+\contentsline {figure}{\numberline {3.10}{\ignorespaces Worker Tasks View}}{26}{figure.caption.24}%
+\contentsline {figure}{\numberline {3.11}{\ignorespaces Sprint 3 Use Case Diagram}}{27}{figure.caption.25}%
+\contentsline {figure}{\numberline {3.12}{\ignorespaces Inventory Admin View}}{28}{figure.caption.26}%
+\contentsline {figure}{\numberline {3.13}{\ignorespaces Inventory Reservations Admin View}}{28}{figure.caption.26}%
+\contentsline {figure}{\numberline {3.14}{\ignorespaces Inventory Worker View}}{28}{figure.caption.27}%
+\contentsline {figure}{\numberline {3.15}{\ignorespaces Inventory Reservations Worker View}}{28}{figure.caption.27}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Sprint 4 Use Case Diagram}}{30}{figure.caption.28}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Real-Time Chat Message Flow Sequence Diagram}}{31}{figure.caption.29}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Note Management Worker View}}{32}{figure.caption.30}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Notes History Admin View}}{32}{figure.caption.30}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Chat Messaging Interface Worker View}}{32}{figure.caption.31}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Chat Messaging Interface Admin View}}{32}{figure.caption.31}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Notification Center}}{32}{figure.caption.32}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Sprint 5 Use Case Diagram}}{33}{figure.caption.33}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Sequence Diagram for AI-Based Report Generation}}{34}{figure.caption.34}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Work Order Details Interface with QR Code}}{35}{figure.caption.35}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces QR Code Scanner Interface}}{35}{figure.caption.35}%
+\contentsline {figure}{\numberline {4.12}{\ignorespaces AI Report Interface}}{35}{figure.caption.36}%
+\contentsline {figure}{\numberline {4.13}{\ignorespaces Analytics Dashboard}}{35}{figure.caption.36}%

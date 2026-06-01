@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileSearchCorner, SquarePen  , Route ,Zap,CircleCheckBig,SkipForward,CircleX, CircleDotDashed,BriefcaseBusiness,PencilRuler,MonitorCog,Store,Cog,Wrench,Search,Truck,UserRoundSearch,RotateCcw,MessageSquareShare, NotebookPen} from "lucide-react";
+import { FileSearchCorner, SquarePen  , Route ,Zap,CircleCheckBig,SkipForward,CircleX, CircleDotDashed,BriefcaseBusiness,PencilRuler,MonitorCog,Store,Cog,Wrench,Search,Truck,UserRoundSearch,RotateCcw,MessageSquareShare, NotebookPen, Eye, X} from "lucide-react";
 import authService from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import NotificationBell from "@/components/NotificationBell";
@@ -77,6 +77,11 @@ export default function WorkOrderDetailPage({ params: paramsPromise }) {
   const [assignModal, setAssignModal] = useState(null);
   const [selectedWorkerForAssignment, setSelectedWorkerForAssignment] =useState('');
   const [isOpeningWorkOrderChat, setIsOpeningWorkOrderChat] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedNotesStageId, setSelectedNotesStageId] = useState(null);
+  const [selectedNotesStage, setSelectedNotesStage] = useState(null);
+  const [stageNotes, setStageNotes] = useState([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -111,6 +116,29 @@ export default function WorkOrderDetailPage({ params: paramsPromise }) {
     console.error('Error fetching workers:', error);
   }
 };
+
+  const fetchStageNotes = async (stage) => {
+    setIsLoadingNotes(true);
+    try {
+      const response = await api.get(`/stages/${stage.id}/notes`);
+      setStageNotes(response.data.notes || []);
+      setSelectedNotesStageId(stage.id);
+      setSelectedNotesStage(stage);
+      setShowNotesModal(true);
+    } catch (error) {
+      notifyError("Failed to load notes");
+      setStageNotes([]);
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  };
+
+  const closeNotesModal = () => {
+    setShowNotesModal(false);
+    setSelectedNotesStageId(null);
+    setSelectedNotesStage(null);
+    setStageNotes([]);
+  };
 
   const handleLogout = () => {
     authService.logout();
@@ -543,9 +571,13 @@ const getWorkersForStage = (subRole) => {
                                 </p>
                               )}
                               {stage.notes && (
-                                <p className="text-xs text-gray-500 mt-1 italic">
-                                  <NotebookPen className="w-4 h-4 mr-1" /> {stage.notes}
-                                </p>
+                                <button
+                                  onClick={() => fetchStageNotes(stage)}
+                                  className="mt-1 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded transition"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  View Notes
+                                </button>
                               )}
                             </div>
 
@@ -614,6 +646,61 @@ const getWorkersForStage = (subRole) => {
           </div>
         </main>
       </div>
+      {/* Notes Modal */}
+      {showNotesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-bold text-gray-900">{selectedNotesStage?.subRole} - Notes History</h2>
+              <button
+                onClick={closeNotesModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto flex-1 p-6">
+              {isLoadingNotes ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : stageNotes.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No notes saved for this stage.</p>
+              ) : (
+                <div className="space-y-3">
+                  {stageNotes.map((note) => (
+                    <div key={note.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{note.content}</p>
+                      <div className="mt-3 flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                          <span className="font-medium">{note.author?.username || "Unknown"}</span>
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(note.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 p-4 flex justify-end">
+              <button
+                onClick={closeNotesModal}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Assignment Modal */}
 {assignModal && (
   <div className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center z-50 p-4">
