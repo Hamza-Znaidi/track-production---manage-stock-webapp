@@ -101,7 +101,7 @@ PFE/
 ### 1. Clone and install dependencies
 
 ```bash
-git clone <YOUR_REPO_URL>
+git clone https://github.com/Hamza-Znaidi/track-production---manage-stock-webapp
 cd PFE
 
 # Backend
