@@ -476,8 +476,13 @@ npm run start
 
 
 
+---
+
 <div align="center">
 
-Made with ❤️ for modern manufacturing teams
+### ⭐ If you like this project, consider giving it a star!
+
+Built for End-of-Studies Project (PFE)
 
 </div>
+
